@@ -10,7 +10,7 @@ import sys
 import time
 from pathlib import Path
 
-from pixi_environment import activated_environment, prepend_python_path
+from pixi_environment import isolated_ros_environment, prepend_python_path
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,7 +58,7 @@ def main() -> None:
             raise SystemExit("invalid supervisor test delay")
         time.sleep(int(test_delay) / 1_000)
     try:
-        environment = activated_environment(ROOT)
+        environment = isolated_ros_environment(ROOT)
     except RuntimeError as error:
         raise SystemExit(str(error)) from error
     environment[PROCESS_TOKEN_VARIABLE] = process_token

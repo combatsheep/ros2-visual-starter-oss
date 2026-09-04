@@ -13,6 +13,7 @@ ROS2 Visual Starterはlocal development／learning toolです。セキュリテ�
 - 変更系APIとWebSocketはOrigin必須です。rosbridge本体もdocumented loopback UI Originだけを受理し、Vite proxyの迂回を拒否します。
 - LANまたはInternetへの公開はサポートしません。
 - Optional Local LLMは利用者が管理するloopback serviceに限ります。
+- 既定ではOptional Local LLM adapterを起動せず、Rule-based parserだけを使います。
 - LLM tokenはprocessの環境変数だけから読み、Browserへ渡しません。
 - Local LLM runtimeとmodelは同梱せず、自動インストールも自動起動も行いません。
 

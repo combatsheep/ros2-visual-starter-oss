@@ -50,7 +50,12 @@ exercise_group_leader_failure() {
   local kind="$service"
   local runner_pid service_pid ready
   mkdir -p .logs
-  ROS2_VISUAL_NO_OPEN=1 ./run.sh --sim >".logs/ci-${service}-bootstrap.log" 2>&1 &
+  if [[ "$service" == "optional_llm" ]]; then
+    ROS2_VISUAL_LLM_ENABLED=1 ROS2_VISUAL_LLM_MODEL=ci-model ROS2_VISUAL_NO_OPEN=1 \
+      ./run.sh --sim >".logs/ci-${service}-bootstrap.log" 2>&1 &
+  else
+    ROS2_VISUAL_NO_OPEN=1 ./run.sh --sim >".logs/ci-${service}-bootstrap.log" 2>&1 &
+  fi
   runner_pid=$!
   current_runner_pid="$runner_pid"
 
@@ -83,6 +88,7 @@ exercise_group_leader_failure() {
   set +e
   wait "$runner_pid"
   set -e
+  ./stop.sh >/dev/null
   for _ in {1..100}; do
     if ! port_is_open 27182 && ! port_is_open 27184 && ! port_is_open 9090; then break; fi
     sleep .1
@@ -125,7 +131,7 @@ exercise_owned_lock() {
 
 exercise_pre_ready_owner_failure() {
   local runner_pid bootstrap_pid ready
-  ROS2_VISUAL_TEST_READY_DELAY_MS=3000 ROS2_VISUAL_NO_OPEN=1 \
+  ROS2_VISUAL_TEST_READY_DELAY_MS=3000 ROS2_VISUAL_LLM_ENABLED=1 ROS2_VISUAL_LLM_MODEL=ci-model ROS2_VISUAL_NO_OPEN=1 \
     ./run.sh --sim >.logs/ci-pre-ready-owner.log 2>&1 &
   runner_pid=$!
   current_runner_pid="$runner_pid"
@@ -221,7 +227,7 @@ exercise_ros_group_leader_failure() {
     if ! port_is_open 9090; then break; fi
     sleep .1
   done
-  if ! kill -0 "$runner_pid" 2>/dev/null || ! port_is_open 27182 || ! port_is_open 27184 || port_is_open 9090; then
+  if ! kill -0 "$runner_pid" 2>/dev/null || ! port_is_open 27182 || port_is_open 9090; then
     echo "ROS group leader停止後にFrontendを維持してSIMへ戻せませんでした。" >&2
     return 1
   fi
@@ -238,6 +244,58 @@ exercise_ros_group_leader_failure() {
   fi
   ./stop.sh >/dev/null
   wait "$runner_pid" 2>/dev/null || true
+  for _ in {1..100}; do
+    if ! port_is_open 27182 && ! port_is_open 27184 && ! port_is_open 9090; then break; fi
+    sleep .1
+  done
+  assert_stopped
+  current_runner_pid=""
+}
+
+exercise_optional_llm_failure() {
+  local runner_pid optional_pid ready runtime_state
+  ROS2_VISUAL_LLM_ENABLED=1 ROS2_VISUAL_LLM_MODEL=ci-model ROS2_VISUAL_NO_OPEN=1 \
+    ./run.sh --sim >.logs/ci-optional-llm-failure.log 2>&1 &
+  runner_pid=$!
+  current_runner_pid="$runner_pid"
+  ready=0
+  for _ in {1..120}; do
+    if port_is_open 27182 && port_is_open 27184 \
+      && [[ -f .logs/frontend.pid && -f .logs/optional_llm.pid ]]; then
+      ready=1
+      break
+    fi
+    if ! kill -0 "$runner_pid" 2>/dev/null; then break; fi
+    sleep .1
+  done
+  if [[ "$ready" != "1" ]]; then
+    tail -n 60 .logs/ci-optional-llm-failure.log >&2 || true
+    echo "Optional Local LLM failure smokeを開始できませんでした。" >&2
+    return 1
+  fi
+  optional_pid="$(<.logs/optional_llm.pid)"
+  kill -KILL "$optional_pid"
+  for _ in {1..100}; do
+    if ! process_is_running "$optional_pid"; then break; fi
+    sleep .1
+  done
+  sleep .5
+  if process_is_running "$optional_pid" || ! kill -0 "$runner_pid" 2>/dev/null \
+    || ! port_is_open 27182; then
+    echo "Optional Local LLM停止時にFrontend/launcherが継続しませんでした。" >&2
+    return 1
+  fi
+  runtime_state="$(curl -fsS --max-time 2 http://127.0.0.1:27182/api/runtime)"
+  if [[ "$runtime_state" != *'"mode":"sim"'* ]]; then
+    echo "Optional Local LLM停止後にSIM runtimeが継続しませんでした: $runtime_state" >&2
+    return 1
+  fi
+  ./stop.sh >/dev/null
+  wait "$runner_pid" 2>/dev/null || true
+  for _ in {1..100}; do
+    if ! port_is_open 27182 && ! port_is_open 27184 && ! port_is_open 9090; then break; fi
+    sleep .1
+  done
   assert_stopped
   current_runner_pid=""
 }
@@ -292,7 +350,7 @@ exercise_runtime_worker_failure() {
     if ! kill -0 "$runner_pid" 2>/dev/null; then break; fi
     sleep .1
   done
-  if [[ "$recovered" != "1" ]] || ! port_is_open 27182 || ! port_is_open 27184; then
+  if [[ "$recovered" != "1" ]] || ! port_is_open 27182; then
     tail -n 60 .logs/ci-runtime-worker.log >&2 || true
     echo "停止したruntime workerを回収してSIMへ戻せませんでした: $runtime_state" >&2
     return 1
@@ -330,12 +388,19 @@ exercise_generation_sentinel_failure() {
   local kind="$1"
   local launch_flag="$2"
   local runner_pid leader_pid group_id generation_token sentinel_pid ready runner_status member_pid
-  ROS2_VISUAL_NO_OPEN=1 ./run.sh "$launch_flag" >".logs/ci-${kind}-sentinel.log" 2>&1 &
+  if [[ "$kind" == "optional_llm" ]]; then
+    ROS2_VISUAL_LLM_ENABLED=1 ROS2_VISUAL_LLM_MODEL=ci-model ROS2_VISUAL_NO_OPEN=1 \
+      ./run.sh "$launch_flag" >".logs/ci-${kind}-sentinel.log" 2>&1 &
+  else
+    ROS2_VISUAL_NO_OPEN=1 ./run.sh "$launch_flag" >".logs/ci-${kind}-sentinel.log" 2>&1 &
+  fi
   runner_pid=$!
   current_runner_pid="$runner_pid"
   ready=0
   for _ in {1..120}; do
-    if port_is_open 27182 && port_is_open 27184 && [[ -f ".logs/${kind}.pid" ]] \
+    if port_is_open 27182 \
+      && { [[ "$kind" != "optional_llm" ]] || port_is_open 27184; } \
+      && [[ -f ".logs/${kind}.pid" ]] \
       && { [[ "$kind" != "ros_backend" ]] || port_is_open 9090; }; then
       ready=1
       break
@@ -373,7 +438,8 @@ exercise_generation_sentinel_failure() {
     echo "${kind} leader generation anchorがsentinel単独停止後に残りませんでした。" >&2
     return 1
   fi
-  if ! port_is_open 27182 || ! port_is_open 27184 \
+  if ! port_is_open 27182 \
+    || { [[ "$kind" == "optional_llm" ]] && ! port_is_open 27184; } \
     || { [[ "$kind" == "ros_backend" ]] && ! port_is_open 9090; }; then
     echo "${kind} sentinel単独停止でmanaged serviceが停止しました。" >&2
     return 1
@@ -433,7 +499,7 @@ exercise_owned_lock
 exercise_foreign_rosbridge_listener
 exercise_pre_ready_owner_failure
 exercise_group_leader_failure frontend
-exercise_group_leader_failure optional_llm
+exercise_optional_llm_failure
 exercise_runtime_worker_failure
 exercise_ros_group_leader_failure
 exercise_generation_sentinel_failure frontend --sim

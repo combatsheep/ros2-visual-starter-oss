@@ -11,6 +11,20 @@ from pathlib import Path
 from typing import Mapping
 
 
+ROS_NETWORK_ENVIRONMENT_NAMES = (
+    "ROS_STATIC_PEERS",
+    "ROS_DISCOVERY_SERVER",
+    "ROS_SUPER_CLIENT",
+    "ROS2_EASY_MODE",
+    "RMW_IMPLEMENTATION",
+    "CYCLONEDDS_URI",
+    "FASTDDS_DEFAULT_PROFILES_FILE",
+    "FASTRTPS_DEFAULT_PROFILES_FILE",
+    "FASTDDS_ENVIRONMENT_FILE",
+    "FASTDDS_BUILTIN_TRANSPORTS",
+)
+
+
 def resolve_pixi() -> Path:
     candidates = []
     configured = os.environ.get("PIXI_EXE")
@@ -65,6 +79,28 @@ def activated_environment(root: Path) -> dict[str, str]:
     if actual_prefix != expected_prefix:
         raise RuntimeError("別workspaceのPixi環境を拒否しました。")
     return environment
+
+
+def isolated_ros_environment(root: Path) -> dict[str, str]:
+    """Activate Pixi without inheriting a parent's ROS/DDS network policy."""
+
+    return sanitize_ros_environment(activated_environment(root))
+
+
+def sanitize_ros_environment(environment: Mapping[str, str]) -> dict[str, str]:
+    """Remove inherited ROS/DDS discovery settings and apply localhost policy."""
+
+    sanitized = dict(environment)
+    for name in ROS_NETWORK_ENVIRONMENT_NAMES:
+        sanitized.pop(name, None)
+    sanitized.update({
+        "RMW_IMPLEMENTATION": "rmw_fastrtps_cpp",
+        "ROS_AUTOMATIC_DISCOVERY_RANGE": "LOCALHOST",
+        "ROS_LOCALHOST_ONLY": "1",
+        "SKIP_DEFAULT_XML": "1",
+        "FASTDDS_BUILTIN_TRANSPORTS": "UDPv4",
+    })
+    return sanitized
 
 
 def prepend_python_path(environment: dict[str, str], entry: Path) -> None:

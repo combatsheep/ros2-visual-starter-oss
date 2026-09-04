@@ -142,8 +142,8 @@ lockfileのlicense名だけで判断せず、実際に含むbinaryとnoticeを�
   commitしない。weight固有の再配布条件が明示されていないため再配布しない
 - YOLOX `dog.jpg` は元写真の追加来歴が不明なためdownload-onlyとする
 - apple画像とTraining Room mapは再配布licenseのowner確認待ちのため非同梱
-- 最終3D robot modelは未提供。creator、license、SHA-256が確定するまで
-  Public release readyとはしない
+- 3D robotは`src/starterRobotModel.ts`のfirst-party MIT TypeScript codeであり、外部
+  binary assetではない。将来binary modelを追加する場合だけ、asset provenanceを再監査する
 
 assetの詳細は [`../ASSETS.md`](../ASSETS.md) を参照してください。
 
@@ -153,5 +153,6 @@ assetの詳細は [`../ASSETS.md`](../ASSETS.md) を参照してください。
    承認flag、正しいsource、SHA-256をmanifestへ登録する
 2. Training Room候補地図はSLAM Toolbox保存物であり、fallback generatorの
    `default.*` とは別物として扱う
-3. ユーザー提供3D modelのcreator、再配布license、SHA-256を登録する
+3. 将来binary 3D modelを追加する場合は、creator、再配布license、SHA-256、manifestの
+   承認flagを登録する
 4. 将来binary/containerを配布する場合は、transitive dependencyを含む別監査を行う

@@ -749,7 +749,7 @@ export class Simulation {
     }
     this.camera.up.set(0, 1, 0);
     const backward = this.robotCenteredCamera ? rosYawToThreeForward(this.yaw).multiplyScalar(-1) : new THREE.Vector3(0, 0, 1);
-    // Keep a consistent three-quarter overview of the neutral robot placeholder.
+    // Keep a consistent three-quarter overview of the neutral starter robot.
     // Robot-centered mode instead follows the current heading.
     if (!this.robotCenteredCamera) {
       this.followPosition.set(translation.x, translation.y + 3.6, translation.z - 3.9);

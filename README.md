@@ -3,7 +3,7 @@
 ROS2 Visual Starterは、ロボット、LiDAR、ROS 2メッセージ、地図、経路計画の関係をブラウザで観察しながら学ぶためのローカル教材です。Three.jsとRapierで動くSIMを入口にし、必要に応じてROS 2 Jazzy、SLAM Toolbox、Nav2、YOLOXを同じ画面へ接続します。
 
 > [!IMPORTANT]
-> 現在表示する簡素な3Dロボットは、基本図形だけで構成した**公開ドラフト用の一時プレースホルダー**です。完成したオリジナルモデルではありません。公開リリース前に、再配布条件が明確なオリジナルモデルへ置き換える予定です。
+> OSS初版では、センサー位置や車体構造を理解しやすくするため、基本図形のみで構成したミニマルな教材用starter robotを正式採用しています。外部3D assetは使用していません。将来のmodel差し替えは可能ですが、必須ではありません。
 
 ## できること
 
@@ -30,9 +30,9 @@ SIMはThree.jsによる表示とRapierによる物理計算を担当し、ROS 2�
 
 ## サポート対象
 
-基準環境はmacOS Apple Siliconです。Terminalで基本的なエラーを確認できる利用者を想定しています。
+正式対応環境はmacOS Apple Silicon（arm64）です。Terminal、Git、curlを利用できることを前提とします。Node.js、Python、ROS 2 Jazzy、Nav2、SLAM Toolbox等はPixi環境へ導入します。
 
-Ubuntu 24.04 x86_64はCIの検証対象ですが、初回公開前は実行結果を確認してから対応済みと判断してください。その他のLinux環境、Windows、実機ロボットは正式な対応対象としていません。ブラウザにはES Modules、WebGL、IndexedDBを利用できる現行のデスクトップブラウザが必要です。
+Linux、Windows、Intel MacはOSS初版の正式サポート対象外です。動作する可能性があっても、検証済み環境としては扱いません。ブラウザにはES Modules、WebGL、IndexedDBを利用できる現行のデスクトップブラウザが必要です。
 
 ## Quick Start
 
@@ -121,13 +121,13 @@ LLM runtimeとmodelはこのrepositoryに同梱せず、`setup.sh`でも自動�
 
 ## 現時点の制約
 
-- 3Dロボットは公開ドラフト用の一時プレースホルダーであり、完成モデルではありません。
+- 3Dロボットは外部assetを使わず、Three.jsの基本geometryから生成するOSS v1の正式な教材用starter robotです。将来のmodel差し替えは任意です。
 - 教材用の仮想環境を対象とし、実機ロボットや安全重要用途の動作保証はありません。
 - SIMだけではSLAM Toolbox、Nav2、YOLOX Object Searchは実行できません。
 - Navigation用default mapは標準のMedium stage向けです。STAGEを変更した場合はMappingで地図を作り直してください。
 - Object SearchはYOLOXのCOCOクラスと、freshなCamera、Depth、map、poseが揃う場合に限られます。
 - Local LLMは表現の補助だけを行い、任意の会話、任意のROS操作、直接速度制御には対応しません。
-- 正式対応とするplatformは、lockfileの存在ではなく最新の検証結果で判断します。
+- 正式対応platformはmacOS Apple Siliconです。Linux CIを使う場合もportable unit test用であり、macOS対応の証明にはなりません。
 
 ## 開発・ライセンス
 

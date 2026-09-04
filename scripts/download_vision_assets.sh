@@ -23,7 +23,7 @@ download_verified() {
   fi
 
   rm -f "$partial"
-  curl -fL --retry 3 --connect-timeout 15 -o "$partial" "$url"
+  curl -fL --retry 3 --connect-timeout 15 --proto '=https' --tlsv1.2 -o "$partial" "$url"
   local actual_sha256
   actual_sha256="$(sha256_file "$partial")"
   if [[ "$actual_sha256" != "$expected_sha256" ]]; then

@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import { ROBOT_GEOMETRY } from './robotGeometry';
 
 /**
- * Neutral, geometry-only placeholder used until a redistributable original
- * robot asset is supplied. Physics, LiDAR and camera frames remain owned by
- * Simulation; this module is visual-only.
+ * First-party, geometry-only starter robot for the OSS v1 teaching scene.
+ * Physics, LiDAR and camera frames remain owned by Simulation; this module is
+ * visual-only.
  */
 export interface StarterRobotModel {
   group: THREE.Group;
@@ -17,8 +17,7 @@ function standardMaterial(color: number, metalness = .05): THREE.MeshStandardMat
 
 export function createStarterRobotModel(): StarterRobotModel {
   const group = new THREE.Group();
-  group.name = 'starterRobotPlaceholder';
-  group.userData.placeholder = true;
+  group.name = 'starterRobotModel';
 
   const body = new THREE.Mesh(
     new THREE.BoxGeometry(.42, .24, .36),

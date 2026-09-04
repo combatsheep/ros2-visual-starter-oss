@@ -7,7 +7,8 @@
 - Git
 - curl
 - Terminalでcommandの失敗を確認できること
-- 基準環境はmacOS Apple Silicon
+- 正式対応環境はmacOS Apple Silicon（arm64）
+- Linux、Windows、Intel Macは正式サポート対象外
 
 Node.js 22、Python 3.12、ROS 2 Jazzyとruntime dependencyは`pixi.toml`と`pixi.lock`で管理します。systemへROS 2を別途導入する必要はありません。
 
@@ -101,9 +102,13 @@ SIMとROS 2の差は`TransportAdapter`で吸収します。roslib固有class、T
 
 同じ変換式や寸法定数を別fileへ複製しないでください。LiDARのhot pathではTypedArrayと既存Geometryを再利用します。
 
-### 3D robot placeholder
+### 3D robot starter model
 
-`src/starterRobotModel.ts`は公開ドラフト用の一時プレースホルダーです。完成modelとして装飾や固有名称を追加しないでください。新しいmodelへ置き換える場合は、再配布licenseとprovenanceを確認し、`assets/manifest.json`、`ASSETS.md`、必要なthird-party noticeを同じ変更で更新します。
+`src/starterRobotModel.ts`はOSS v1の正式な教材用starter robotです。Three.jsの基本geometry
+から生成するfirst-party MIT sourceで、外部3D binary assetは使用しません。physics、LiDAR、
+Camera、wheel geometryとのinterfaceは維持します。将来binary modelへ置き換える場合だけ、
+再配布licenseとprovenanceを確認し、`assets/manifest.json`、`ASSETS.md`、必要なthird-party
+noticeを同じ変更で更新します。
 
 ## STAGEと地図
 
@@ -135,13 +140,13 @@ LLMなしの決定論パーサーが常に先です。LLM統合を変更する�
 公開treeでは通常のtestに加え、root allowlist、禁止path、秘密形式、個人path、network literal、symlink、実行bit、binary manifest、required docsを検査します。
 
 ```bash
-./scripts/pixi.sh run node --test tests/public-release/public-release.test.mjs
+make public-audit
 ```
 
-release用commit作成後は、root commit数とnoreply metadataの検査も有効にします。
+初回公開直前のclean-room commitだけは、通常監査とは別の初回公開監査を実行します。
 
 ```bash
-PUBLIC_RELEASE_REQUIRE_SINGLE_ROOT=1 ./scripts/pixi.sh run node --test tests/public-release/public-release.test.mjs
+make initial-release-audit
 ```
 
 ## 依存更新
@@ -149,7 +154,8 @@ PUBLIC_RELEASE_REQUIRE_SINGLE_ROOT=1 ./scripts/pixi.sh run node --test tests/pub
 - 通常の再現確認では`npm ci`と`./scripts/pixi.sh install --locked`を使用します。
 - dependencyを変更したときだけmanifestとlockfileを更新します。
 - Node.js、Python、ROS 2の対応範囲を同時に広げないでください。
-- CIで検証していないplatformをREADMEの正式対応へ追加しないでください。
+- CIで検証していないplatformをREADMEの正式対応へ追加しないでください。Linux CIはportable
+  unit test用であり、macOS Apple Siliconの対応確認とは別です。
 - upstream由来の設定を更新した場合は[Dependency License Audit](DEPENDENCY_LICENSE_AUDIT.md)も更新します。
 
 ## 提出前checklist

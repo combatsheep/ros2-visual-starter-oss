@@ -13,6 +13,11 @@ lifecycle_lock_held=0
 MODE="sim"
 MODE_SELECTED=0
 MAP_PATH=""
+OPTIONAL_LLM_ENABLED="${ROS2_VISUAL_LLM_ENABLED:-0}"
+if [[ "$OPTIONAL_LLM_ENABLED" != "0" && "$OPTIONAL_LLM_ENABLED" != "1" ]]; then
+  echo "ROS2_VISUAL_LLM_ENABLEDは0または1で指定してください。" >&2
+  exit 2
+fi
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
     --sim|--ros|--mapping|--navigation|--exploration)
@@ -171,53 +176,58 @@ if [[ "$MODE" == "sim" ]]; then
 else
   ./scripts/runtime.sh start "$MODE" "$MAP_PATH" 9>&-
   ros_backend_pid="$(cat .logs/ros_backend.pid 2>/dev/null || true)"
-  if [[ ! "$ros_backend_pid" =~ ^[1-9][0-9]*$ ]] || ! kill -0 "$ros_backend_pid" 2>/dev/null; then
+  if [[ ! "$ros_backend_pid" =~ ^[1-9][0-9]*$ ]] || ! process_is_running "$ros_backend_pid"; then
     echo "ROS backendの起動台帳を確認できませんでした。" >&2
     exit 1
   fi
   echo "✓ ROS 2 Jazzy backend started ($MODE)"
 fi
 
-rm -f .logs/optional_llm.pid .logs/optional_llm.pgid .logs/optional_llm.token .logs/optional_llm.session_ready .logs/optional_llm.bootstrap.pid .logs/optional_llm.bootstrap.owner .logs/optional_llm.bootstrap.token
-optional_llm_bootstrap_token="$("$PIXI_PYTHON" -c 'import secrets; print(secrets.token_hex(16))')"
-printf '%s\n' "$$" > .logs/optional_llm.bootstrap.owner
-printf '%s\n' "$optional_llm_bootstrap_token" > .logs/optional_llm.bootstrap.token
-"$PIXI_PYTHON" scripts/service_process_supervisor.py optional_llm "$optional_llm_bootstrap_token" "$$" >.logs/optional_llm.log 2>&1 9>&- &
-optional_llm_bootstrap_pid=$!
-printf '%s\n' "$optional_llm_bootstrap_pid" > .logs/optional_llm.bootstrap.pid
-optional_llm_pid=""
-for _ in {1..250}; do
-  recorded_pid="$(cat .logs/optional_llm.pid 2>/dev/null || true)"
-  recorded_pgid="$(cat .logs/optional_llm.pgid 2>/dev/null || true)"
-  recorded_token="$(cat .logs/optional_llm.token 2>/dev/null || true)"
-  session_ready="$(cat .logs/optional_llm.session_ready 2>/dev/null || true)"
-  if [[ "$recorded_pid" =~ ^[1-9][0-9]*$ && "$recorded_pgid" == "$recorded_pid" ]] \
-    && [[ "$recorded_token" =~ ^[0-9a-f]{32}$ && "$session_ready" == "$recorded_pid" ]] \
-    && kill -0 "$recorded_pid" 2>/dev/null; then
-    optional_llm_pid="$recorded_pid"
-    break
+if [[ "$OPTIONAL_LLM_ENABLED" == "1" ]]; then
+  rm -f .logs/optional_llm.pid .logs/optional_llm.pgid .logs/optional_llm.token .logs/optional_llm.session_ready .logs/optional_llm.bootstrap.pid .logs/optional_llm.bootstrap.owner .logs/optional_llm.bootstrap.token
+  optional_llm_bootstrap_token="$("$PIXI_PYTHON" -c 'import secrets; print(secrets.token_hex(16))')"
+  printf '%s\n' "$$" > .logs/optional_llm.bootstrap.owner
+  printf '%s\n' "$optional_llm_bootstrap_token" > .logs/optional_llm.bootstrap.token
+  "$PIXI_PYTHON" scripts/service_process_supervisor.py optional_llm "$optional_llm_bootstrap_token" "$$" >.logs/optional_llm.log 2>&1 9>&- &
+  optional_llm_bootstrap_pid=$!
+  printf '%s\n' "$optional_llm_bootstrap_pid" > .logs/optional_llm.bootstrap.pid
+  optional_llm_pid=""
+  for _ in {1..250}; do
+    recorded_pid="$(cat .logs/optional_llm.pid 2>/dev/null || true)"
+    recorded_pgid="$(cat .logs/optional_llm.pgid 2>/dev/null || true)"
+    recorded_token="$(cat .logs/optional_llm.token 2>/dev/null || true)"
+    session_ready="$(cat .logs/optional_llm.session_ready 2>/dev/null || true)"
+    if [[ "$recorded_pid" =~ ^[1-9][0-9]*$ && "$recorded_pgid" == "$recorded_pid" ]] \
+      && [[ "$recorded_token" =~ ^[0-9a-f]{32}$ && "$session_ready" == "$recorded_pid" ]] \
+      && process_is_running "$recorded_pid"; then
+      optional_llm_pid="$recorded_pid"
+      break
+    fi
+    if ! process_is_running "$optional_llm_bootstrap_pid"; then break; fi
+    sleep .02
+  done
+  if [[ -z "$optional_llm_pid" ]]; then
+    echo "警告: Optional Local LLM adapterの専用process groupを確立できません。Rule-based parserと他のruntimeは継続します。" >&2
   fi
-  if ! kill -0 "$optional_llm_bootstrap_pid" 2>/dev/null; then break; fi
-  sleep .02
-done
-if [[ -z "$optional_llm_pid" ]]; then
-  echo "Optional Local LLM adapterの専用process groupを確立できませんでした。" >&2
-  exit 1
-fi
-optional_llm_ready=0
-for _ in {1..100}; do
-  if curl -fsS --max-time 1 http://127.0.0.1:27184/status >/dev/null 2>&1; then
-    optional_llm_ready=1
-    break
+  if [[ -n "$optional_llm_pid" ]]; then
+    optional_llm_ready=0
+    for _ in {1..100}; do
+      if curl -fsS --max-time 1 http://127.0.0.1:27184/status >/dev/null 2>&1; then
+        optional_llm_ready=1
+        break
+      fi
+      if ! process_is_running "$optional_llm_pid"; then break; fi
+      sleep .1
+    done
+    if [[ "$optional_llm_ready" != "1" ]]; then
+      echo "警告: Optional Local LLM adapterが利用できません。.logs/optional_llm.logを確認してください。Rule-based parserと他のruntimeは継続します。" >&2
+    fi
   fi
-  if ! kill -0 "$optional_llm_pid" 2>/dev/null; then break; fi
-  sleep .1
-done
-if [[ "$optional_llm_ready" != "1" ]]; then
-  echo "Optional Local LLM adapterを起動できませんでした。.logs/optional_llm.logを確認してください。" >&2
-  exit 1
+  rm -f .logs/optional_llm.bootstrap.pid .logs/optional_llm.bootstrap.owner .logs/optional_llm.bootstrap.token
+else
+  rm -f .logs/optional_llm.pid .logs/optional_llm.pgid .logs/optional_llm.token .logs/optional_llm.session_ready .logs/optional_llm.bootstrap.pid .logs/optional_llm.bootstrap.owner .logs/optional_llm.bootstrap.token
+  echo "Optional Local LLM adapter: disabled（Rule-based parserを使用）"
 fi
-rm -f .logs/optional_llm.bootstrap.pid .logs/optional_llm.bootstrap.owner .logs/optional_llm.bootstrap.token
 
 rm -f .logs/frontend.pid .logs/frontend.pgid .logs/frontend.token .logs/frontend.session_ready .logs/frontend.bootstrap.pid .logs/frontend.bootstrap.owner .logs/frontend.bootstrap.token
 frontend_bootstrap_token="$("$PIXI_PYTHON" -c 'import secrets; print(secrets.token_hex(16))')"
@@ -238,11 +248,11 @@ for _ in {1..50}; do
   session_ready="$(cat .logs/frontend.session_ready 2>/dev/null || true)"
   if [[ "$recorded_pid" =~ ^[1-9][0-9]*$ && "$recorded_pgid" == "$recorded_pid" ]] \
     && [[ "$recorded_token" =~ ^[0-9a-f]{32}$ && "$session_ready" == "$recorded_pid" ]] \
-    && kill -0 "$recorded_pid" 2>/dev/null; then
+    && process_is_running "$recorded_pid"; then
     frontend_pid="$recorded_pid"
     break
   fi
-  if ! kill -0 "$frontend_bootstrap_pid" 2>/dev/null; then break; fi
+  if ! process_is_running "$frontend_bootstrap_pid"; then break; fi
   sleep .02
 done
 if [[ -z "$frontend_pid" ]]; then
@@ -255,7 +265,7 @@ for _ in {1..60}; do
     frontend_ready=1
     break
   fi
-  if ! kill -0 "$frontend_pid" 2>/dev/null; then break; fi
+  if ! process_is_running "$frontend_pid"; then break; fi
   sleep .5
 done
 if [[ "$frontend_ready" != "1" ]]; then
@@ -278,7 +288,7 @@ echo "終了: Ctrl+C"
 release_owned_lock "$LIFECYCLE_LOCK" 9
 lifecycle_lock_held=0
 
-while kill -0 "$frontend_pid" 2>/dev/null && kill -0 "$frontend_bootstrap_pid" 2>/dev/null; do
+while process_is_running "$frontend_pid" && process_is_running "$frontend_bootstrap_pid"; do
   if ! ros_runtime_is_healthy; then
     monitor_sleep_status=0
     owner_aware_sleep .2 || monitor_sleep_status=$?
@@ -292,16 +302,10 @@ while kill -0 "$frontend_pid" 2>/dev/null && kill -0 "$frontend_bootstrap_pid" 2
       fi
     fi
   fi
-  if ! kill -0 "$optional_llm_pid" 2>/dev/null || ! kill -0 "$optional_llm_bootstrap_pid" 2>/dev/null; then
-    monitor_sleep_status=0
-    owner_aware_sleep .2 || monitor_sleep_status=$?
-    if [[ "$monitor_sleep_status" == "10" ]]; then break; fi
-    if [[ "$monitor_sleep_status" != "0" ]]; then exit "$monitor_sleep_status"; fi
-    if kill -0 "$frontend_pid" 2>/dev/null && kill -0 "$frontend_bootstrap_pid" 2>/dev/null; then
-      echo "Optional Local LLM adapterが予期せず停止しました。" >&2
-      exit 1
-    fi
-    break
+  if [[ "$OPTIONAL_LLM_ENABLED" == "1" && -n "$optional_llm_pid" ]] \
+    && ! process_is_running "$optional_llm_pid"; then
+    echo "警告: Optional Local LLM adapterが停止しました。UIを未接続として継続します。" >&2
+    optional_llm_pid=""
   fi
   monitor_sleep_status=0
   owner_aware_sleep 1 || monitor_sleep_status=$?

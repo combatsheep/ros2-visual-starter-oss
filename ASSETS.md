@@ -69,17 +69,16 @@ download scriptはchecksum不一致時にpartial fileを削除して失敗し、
 
 ## 3D robot model
 
-Public release readyに必要な最終3D modelは、まだ同梱していません。ユーザー提供の
-完全オリジナルmodelについて、少なくとも次を確定してからmanifestへ追加します。
+OSS v1の標準ロボットは、`src/starterRobotModel.ts` がThree.jsの基本geometryから
+生成するfirst-party TypeScript codeです。外部3D asset、texture、character、商標、
+既存ロボットデザインは使用していません。したがってbinary assetではなく、
+`assets/manifest.json`への登録対象でもありません。rootのMIT Licenseがこのsource codeへ
+適用されます。
 
-- repo内の相対pathとMIME type
-- creator／source
-- 再配布license
-- SHA-256
-- physics、LiDAR、Camera、floor位置とのinterface
-
-licenseを推測してMIT、CC0、CC-BY等を割り当ててはいけません。元の参考画像や、
-第三者characterを想起させる代替modelも公開repoへ入れません。
+このvisual modelはphysics、LiDAR、Camera、wheel geometry、floor位置とのinterfaceを
+`src/robotGeometry.ts`とSimulation側で共有します。将来glTF、GLB、OBJ、PNG texture等へ
+差し替える場合は、その時点でcreator／source、再配布license、SHA-256、承認flagを
+manifestへ追加し、第三者assetとして別途監査します。licenseを推測して割り当てません。
 
 ## 公開前check
 
@@ -89,4 +88,4 @@ licenseを推測してMIT、CC0、CC-BY等を割り当ててはいけません�
 - `approvedForRedistribution` が `true` である
 - owner確認済みのlicenseが空、`unknown`、`TBD`でない
 - download-only assetがtrackedされていない
-- original 3D modelのcreator、license、hashが確定している
+- starter robotがfirst-party source codeとして提供され、外部3D binary assetを使用していない

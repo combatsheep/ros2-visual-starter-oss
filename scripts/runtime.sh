@@ -147,6 +147,16 @@ environment=("ROS_LOCALHOST_ONLY=1" "RMW_IMPLEMENTATION=rmw_fastrtps_cpp" "FASTD
 if [[ -n "$MAP_PATH" ]]; then environment+=("ROS2_VISUAL_MAP=$MAP_PATH"); fi
 run_ros_without_llm_environment() {
   env \
+    -u ROS_STATIC_PEERS \
+    -u ROS_DISCOVERY_SERVER \
+    -u ROS_SUPER_CLIENT \
+    -u ROS2_EASY_MODE \
+    -u RMW_IMPLEMENTATION \
+    -u CYCLONEDDS_URI \
+    -u FASTDDS_DEFAULT_PROFILES_FILE \
+    -u FASTRTPS_DEFAULT_PROFILES_FILE \
+    -u FASTDDS_ENVIRONMENT_FILE \
+    -u FASTDDS_BUILTIN_TRANSPORTS \
     -u ROS2_VISUAL_LLM_TOKEN \
     -u ROS2_VISUAL_LLM_BASE_URL \
     -u ROS2_VISUAL_LLM_MODEL \
@@ -158,6 +168,16 @@ bootstrap_token="$("$PIXI_PYTHON" -c 'import secrets; print(secrets.token_hex(16
 printf '%s\n' "$$" > .logs/ros_bootstrap.owner
 printf '%s\n' "$bootstrap_token" > .logs/ros_bootstrap.token
 nohup env \
+  -u ROS_STATIC_PEERS \
+  -u ROS_DISCOVERY_SERVER \
+  -u ROS_SUPER_CLIENT \
+  -u ROS2_EASY_MODE \
+  -u RMW_IMPLEMENTATION \
+  -u CYCLONEDDS_URI \
+  -u FASTDDS_DEFAULT_PROFILES_FILE \
+  -u FASTRTPS_DEFAULT_PROFILES_FILE \
+  -u FASTDDS_ENVIRONMENT_FILE \
+  -u FASTDDS_BUILTIN_TRANSPORTS \
   -u ROS2_VISUAL_LLM_TOKEN \
   -u ROS2_VISUAL_LLM_BASE_URL \
   -u ROS2_VISUAL_LLM_MODEL \
@@ -175,12 +195,12 @@ for _ in {1..250}; do
   session_ready="$(cat .logs/ros_backend.session_ready 2>/dev/null || true)"
   if [[ "$recorded_pid" =~ ^[1-9][0-9]*$ && "$recorded_pgid" == "$recorded_pid" ]] \
     && [[ "$recorded_token" =~ ^[0-9a-f]{32}$ && "$session_ready" == "$recorded_pid" ]] \
-    && kill -0 "$recorded_pid" 2>/dev/null; then
+    && process_is_running "$recorded_pid"; then
     identity_ready=1
     backend_pid="$recorded_pid"
     break
   fi
-  if ! kill -0 "$bootstrap_pid" 2>/dev/null; then break; fi
+  if ! process_is_running "$bootstrap_pid"; then break; fi
   sleep .02
 done
 if [[ "$identity_ready" != "1" ]]; then
@@ -190,7 +210,7 @@ fi
 
 rosbridge_ready=0
 for _ in {1..75}; do
-  if ! kill -0 "$backend_pid" 2>/dev/null; then
+  if ! process_is_running "$backend_pid"; then
     printf 'sim\n' > .logs/runtime_mode
     write_error "ROS backendの起動に失敗しました。.logs/ros_backend.logを確認してください。"
     tail -n 20 .logs/ros_backend.log >&2 || true
@@ -220,7 +240,7 @@ fi
 # 必須serviceが見えるまで待ってからruntimeをreadyとして公開する。
 rosapi_ready=0
 for _ in {1..15}; do
-  if ! kill -0 "$backend_pid" 2>/dev/null; then break; fi
+  if ! process_is_running "$backend_pid"; then break; fi
   service_list="$(run_ros_without_llm_environment "$PIXI_BIN" run ros2 service list --no-daemon --spin-time 1 2>/dev/null || true)"
   padded_services=$'\n'"$service_list"$'\n'
   if [[ "$padded_services" == *$'\n/rosapi/nodes\n'* \
@@ -240,7 +260,7 @@ if [[ "$rosapi_ready" == "1" && ("$MODE" == "mapping" || "$MODE" == "exploration
   # 待ち続けることがある。scanが届く前でも両Nodeはactiveになれるため、
   # mapping側のmanaged bringup完了を確認してからruntimeを公開する。
   for _ in {1..30}; do
-    if ! kill -0 "$backend_pid" 2>/dev/null; then break; fi
+    if ! process_is_running "$backend_pid"; then break; fi
     slam_state="$(run_ros_without_llm_environment "$PIXI_BIN" run ros2 lifecycle get --no-daemon --spin-time 0.5 /slam_toolbox 2>/dev/null || true)"
     if [[ "$slam_state" == *'active [3]'* ]]; then
       map_saver_state="$(run_ros_without_llm_environment "$PIXI_BIN" run ros2 lifecycle get --no-daemon --spin-time 0.5 /map_saver 2>/dev/null || true)"

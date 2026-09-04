@@ -38,7 +38,7 @@ if [[ "$ready" != "1" ]]; then
   exit 1
 fi
 
-for port in 27182 27184; do
+for port in 27182; do
   if command -v lsof >/dev/null 2>&1; then
     listener_output="$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -Fn | sed -n 's/^n//p')"
   elif command -v ss >/dev/null 2>&1; then
@@ -61,6 +61,11 @@ for port in 27182 27184; do
     fi
   done <<< "$listener_output"
 done
+
+if port_is_open 27184; then
+  echo "既定のSIM起動でOptional Local LLM adapterが起動しています。" >&2
+  exit 1
+fi
 
 curl -fsS --max-time 2 http://127.0.0.1:27182/api/runtime | grep -q '"mode":"sim"'
 

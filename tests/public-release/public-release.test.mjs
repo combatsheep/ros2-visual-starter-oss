@@ -474,9 +474,9 @@ test('Git remote is absent or exactly the explicitly allowed public remote', asy
   assert.deepEqual(directions, new Set(['fetch', 'push']));
 });
 
-test('reachable public history is one clean root with noreply metadata', async (context) => {
+test('reachable public history has the clean-room root and permits normal contributors', async (context) => {
   if (!await hasCommit()) {
-    if (process.env.PUBLIC_RELEASE_REQUIRE_SINGLE_ROOT === '1') assert.fail('single-commit release audit requires a commit');
+    if (process.env.PUBLIC_RELEASE_REQUIRE_SINGLE_COMMIT === '1') assert.fail('single-commit release audit requires a commit');
     context.skip('initial public commit has not been created yet');
     return;
   }
@@ -487,22 +487,29 @@ test('reachable public history is one clean root with noreply metadata', async (
   if (fields.at(-1)?.trim() === '') fields.pop();
   assert.equal(fields.length % 8, 0);
   let roots = 0;
+  let rootRecord = null;
   const violations = [];
   for (let index = 0; index < fields.length; index += 8) {
     const [commit, parents, authorName, authorEmail, authorDate, committerName, committerEmail, committerDate] = fields.slice(index, index + 8).map((field) => field.trim());
-    if (!parents) roots += 1;
-    if (authorName !== 'ROS2 Visual Starter contributors') violations.push(`${commit}: author name`);
-    if (committerName !== 'ROS2 Visual Starter contributors') violations.push(`${commit}: committer name`);
+    if (!parents) {
+      roots += 1;
+      rootRecord = { commit, authorName, authorEmail, authorDate, committerName, committerEmail, committerDate };
+    }
     for (const [role, email, date] of [['author', authorEmail, authorDate], ['committer', committerEmail, committerDate]]) {
-      if (email !== 'noreply@github.com' && !email.endsWith('@users.noreply.github.com')) violations.push(`${commit}: ${role} email`);
-      if (!/(?:Z|\+00:00)$/u.test(date)) violations.push(`${commit}: ${role} date is not UTC`);
+      if (!email || !date) violations.push(`${commit}: ${role} metadata`);
     }
   }
   assert.equal(roots, 1);
-  if (process.env.PUBLIC_RELEASE_REQUIRE_SINGLE_ROOT === '1') {
+  assert.ok(rootRecord);
+  if (rootRecord.authorName !== 'ROS2 Visual Starter contributors') violations.push(`${rootRecord.commit}: clean-room root author name`);
+  if (rootRecord.committerName !== 'ROS2 Visual Starter contributors') violations.push(`${rootRecord.commit}: clean-room root committer name`);
+  for (const [role, email] of [['author', rootRecord.authorEmail], ['committer', rootRecord.committerEmail]]) {
+    if (email !== 'noreply@github.com' && !email.endsWith('@users.noreply.github.com')) violations.push(`${rootRecord.commit}: clean-room root ${role} email`);
+  }
+  const { stdout: rootMessage } = await execFileAsync('git', ['log', '--all', '--root', '--format=%B'], { cwd: repositoryRoot, encoding: 'utf8' });
+  assert.match(rootMessage, /^Initial open-source release\s*$/mu);
+  if (process.env.PUBLIC_RELEASE_REQUIRE_SINGLE_COMMIT === '1') {
     assert.equal(fields.length, 8, 'initial release must have exactly one commit');
-    const { stdout: message } = await execFileAsync('git', ['log', '-1', '--format=%B'], { cwd: repositoryRoot, encoding: 'utf8' });
-    assert.equal(message.trim(), 'Initial open-source release');
     const { stdout: status } = await execFileAsync('git', ['status', '--porcelain=v1', '--untracked-files=all'], { cwd: repositoryRoot, encoding: 'utf8' });
     assert.equal(status, '', 'initial release audit requires a clean working tree');
   }
