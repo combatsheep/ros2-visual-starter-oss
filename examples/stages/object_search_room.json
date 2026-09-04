@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "name": "Object Search Room",
+  "stageSize": "large",
+  "objects": [
+    {
+      "id": "wall-north",
+      "kind": "wall",
+      "label": "北の壁",
+      "position": { "x": 0, "z": -5 },
+      "rotation": 0,
+      "size": { "width": 10, "height": 1, "depth": 0.18 },
+      "color": "#95c9bd"
+    },
+    {
+      "id": "wall-south",
+      "kind": "wall",
+      "label": "南の壁",
+      "position": { "x": 0, "z": 5 },
+      "rotation": 0,
+      "size": { "width": 10, "height": 1, "depth": 0.18 },
+      "color": "#95c9bd"
+    },
+    {
+      "id": "wall-west",
+      "kind": "wall",
+      "label": "西の壁",
+      "position": { "x": -5, "z": 0 },
+      "rotation": 1.570796,
+      "size": { "width": 10, "height": 1, "depth": 0.18 },
+      "color": "#95c9bd"
+    },
+    {
+      "id": "wall-east",
+      "kind": "wall",
+      "label": "東の壁",
+      "position": { "x": 5, "z": 0 },
+      "rotation": 1.570796,
+      "size": { "width": 10, "height": 1, "depth": 0.18 },
+      "color": "#95c9bd"
+    },
+    {
+      "id": "central-barrier",
+      "kind": "box",
+      "label": "中央の障害物",
+      "position": { "x": 0.4, "z": -0.4 },
+      "rotation": 0.35,
+      "size": { "width": 2.2, "height": 0.8, "depth": 0.75 },
+      "color": "#e88d46"
+    },
+    {
+      "id": "dog-target",
+      "kind": "vision_target",
+      "label": "YOLOX検証ターゲット",
+      "position": { "x": 4.72, "z": -2.6 },
+      "rotation": -1.570796,
+      "size": { "width": 1.6, "height": 1.2, "depth": 0.05 },
+      "color": "#ffffff",
+      "asset": "/vision/dog.jpg"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+# Online exploration consumes the live map from SLAM Toolbox.  Goals are chosen
+# in known free space, and Nav2 is not allowed to shorten a route through unknown
+# cells.  The fixed-map navigation profile remains in nav2.yaml unchanged.
+planner_server:
+  ros__parameters:
+    GridBased:
+      allow_unknown: false
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      track_unknown_space: true
+      static_layer:
+        map_topic: /map
+        map_subscribe_transient_local: true
+        subscribe_to_updates: true

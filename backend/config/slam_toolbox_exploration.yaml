@@ -1,0 +1,16 @@
+# The browser simulation can publish its first LaserScan before the physics
+# scene has settled.  Exploration must therefore accept a later stationary
+# scan so its bootstrap map reflects the complete room before frontier choice.
+# The shared profile processes the full 10 Hz scan stream. Throttling this to
+# 5 Hz lets a fast turn approach the scan matcher's angular search boundary
+# and can permanently shear the live OccupancyGrid.
+# Exploration goals are short-lived viewpoints, not a map-registration job.
+# A loop-closure correction can move map->odom while Nav2 is following the
+# previous goal; that invalidates the global/local path and makes the browser
+# alternate goals from the same pose. Keep the online exploration map locally
+# consistent and leave loop closure enabled for the explicit mapping runtime.
+slam_toolbox:
+  ros__parameters:
+    minimum_travel_distance: 0.0
+    minimum_travel_heading: 0.0
+    do_loop_closing: false

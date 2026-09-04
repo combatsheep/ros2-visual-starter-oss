@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d1518" />
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./src/styles.css?direct" />
+    <title>ROS2 Visual Starter</title>
+    <script>
+      (() => {
+        try {
+          const stored = localStorage.getItem('ros2-visual-starter-theme');
+          document.documentElement.dataset.theme = stored === 'light' ? 'light' : 'dark';
+        } catch {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true">◎</span>
+          <div>
+            <p class="eyebrow">VISUAL ROBOTICS LAB / 01</p>
+            <h1>ROS2 Visual Starter</h1>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <div class="topbar-actions">
+            <button id="map-runtime-toggle" class="runtime-button runtime-map deactivated" type="button">MAP deactivated</button>
+            <button id="nav-runtime-toggle" class="runtime-button runtime-nav deactivated" type="button">NAV2 deactivated</button>
+            <button id="connection-status" class="runtime-button runtime-ros deactivated" type="button"><span class="status-dot"></span><span>ROS2 deactivated</span></button>
+            <button id="theme-toggle" class="button button-outline theme-toggle" type="button" aria-pressed="true" title="ライトモードへ切り替え">☀️ ライト</button>
+            <button id="app-exit-button" class="app-exit-button" type="button" title="フロントとROS 2を終了">アプリ終了</button>
+          </div>
+          <nav id="view-tabs" class="view-tabs" role="tablist" aria-label="画面を切り替え">
+            <button class="view-tab active" data-view="sim" role="tab" aria-selected="true" aria-controls="view-sim" type="button">SIM</button>
+            <button class="view-tab" data-view="stage" role="tab" aria-selected="false" aria-controls="view-stage" type="button">STAGE</button>
+            <button class="view-tab view-tab-dummy" data-view="robot" role="tab" aria-selected="false" type="button" disabled title="Robot Studioは現在未対応です">ROBOT</button>
+          </nav>
+        </div>
+      </header>
+
+      <section id="control-lease-banner" class="control-lease-banner" hidden aria-live="polite">
+        <div>
+          <strong>この画面は閲覧モードです</strong>
+          <span>別画面の走行操作を安全に停止して、この端末へ操作権を移します。</span>
+        </div>
+        <button class="control-lease-button" data-control-lease type="button">この端末で操作</button>
+      </section>
+
+      <div id="orientation-note" class="orientation-note">iPadは横向きにすると、ロボットとデータの流れを一緒に見られます。</div>
+
+      <div id="processing-modal" class="processing-modal" hidden role="dialog" aria-modal="true" aria-labelledby="processing-modal-title" aria-describedby="processing-modal-detail">
+        <div class="processing-dialog">
+          <div class="processing-spinner" aria-hidden="true"><span></span><span></span><span></span></div>
+          <p class="eyebrow">ROS2 VISUAL STARTER / INITIALIZING</p>
+          <h2 id="processing-modal-title">MAP初期化中</h2>
+          <p id="processing-modal-detail">地図と自機の同期を準備しています。</p>
+          <div class="processing-status"><span class="live-dot"></span><strong id="processing-modal-status">mapの準備完了を待っています…</strong></div>
+          <small>準備が完了するまで、自機の操作をロックしています。</small>
+        </div>
+      </div>
+
+      <div id="stage-image-error-modal" class="processing-modal stage-image-error-modal" hidden role="alertdialog" aria-modal="true" aria-labelledby="stage-image-error-title" aria-describedby="stage-image-error-detail">
+        <div class="processing-dialog stage-image-error-dialog">
+          <p class="eyebrow">STAGE EDITOR / IMAGE</p>
+          <h2 id="stage-image-error-title">画像を読み込めません</h2>
+          <p id="stage-image-error-detail">その画像フォーマットは使えません</p>
+          <button id="stage-image-error-close" class="button button-outline" type="button">閉じる</button>
+        </div>
+      </div>
+
+      <aside id="tablet-control-dock" class="tablet-control-dock" aria-label="iPadタッチ走行操作">
+        <header class="tablet-control-dock-header">
+          <button id="tablet-control-dock-handle" class="tablet-control-dock-handle" type="button" aria-label="操作パレットを移動" title="ドラッグまたは矢印キーで操作パレットを移動"><span aria-hidden="true">⠿</span><span>タッチ走行</span></button>
+          <button id="tablet-control-dock-close" class="tablet-control-dock-close" type="button" aria-label="操作パレットを閉じる" title="操作パレットを閉じる">×</button>
+        </header>
+        <div class="touch-pad tablet-touch-pad" aria-label="iPadタッチ操作パッド">
+          <button class="touch-key touch-up" data-control="forward" type="button" aria-label="前進">↑</button>
+          <button class="touch-key touch-left" data-control="left" type="button" aria-label="左旋回">↺</button>
+          <button class="touch-key touch-stop" data-control="stop" type="button" aria-label="緊急停止">■</button>
+          <button class="touch-key touch-right" data-control="right" type="button" aria-label="右旋回">↻</button>
+          <button class="touch-key touch-down" data-control="backward" type="button" aria-label="後退">↓</button>
+        </div>
+      </aside>
+      <button id="tablet-control-dock-open" class="tablet-control-dock-open" type="button" aria-label="操作パレットを表示" hidden>操作パレット</button>
+
+      <main class="workspace" aria-label="ロボット・地図・ROS学習ダッシュボード">
+          <div class="panel scene-panel">
+            <div class="scene-toolbar">
+              <div>
+                <p class="eyebrow">TRAINING ROOM / SIM 01</p>
+              </div>
+              <div class="scene-heading-actions">
+                <div id="sim-top-zoom-controls" class="sim-top-zoom-controls" role="group" aria-label="SIM上面図の拡大率" hidden>
+                  <button id="sim-top-zoom-in" class="map-tool-button" type="button" aria-label="SIM上面図を拡大">＋</button>
+                  <button id="sim-top-zoom-out" class="map-tool-button" type="button" aria-label="SIM上面図を縮小">−</button>
+                  <button id="sim-top-fit" class="map-tool-button map-fit-button" type="button">Fit</button>
+                </div>
+                <div class="scene-actions">
+                  <button class="icon-button reset-origin-button" data-reset-origin type="button" title="goalと速度を停止して初期位置へ戻す">↺ 初期位置</button>
+                  <button id="camera-toggle" class="icon-button camera-mode-button" type="button" aria-label="上面カメラへ切り替え" aria-pressed="false">上面</button>
+                  <button id="camera-center-toggle" class="icon-button camera-center-button" type="button" aria-label="ロボット中心の回転にする" aria-pressed="false" title="ロボット中心で視点を回転">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 20.2 20 12 16.4 3.8 20 12 2Z" /></svg>
+                  </button>
+                  <button id="robot-camera-toggle" class="icon-button camera-mode-button" type="button" aria-label="自機カメラへ切り替え" aria-pressed="false">自機カメラ</button>
+                  <button id="lidar-toggle" class="icon-button" type="button" data-visible="false" aria-label="LiDAR表示を切り替え">LiDAR <span>OFF</span></button>
+                </div>
+              </div>
+            </div>
+            <div id="scene-shell" class="scene-shell">
+              <canvas id="scene-canvas" aria-label="ロボットが動く3Dトレーニングルーム"></canvas>
+              <div class="scene-badge"><span class="live-dot"></span><span id="scene-hint">WASD / 矢印キーで操作</span></div>
+              <div id="webgl-error" class="scene-error" hidden></div>
+            </div>
+            <div class="scene-footer">
+              <div class="telemetry-item"><span class="telemetry-label">前方距離</span><strong id="front-distance">--</strong><span>m</span></div>
+              <div class="telemetry-item"><span class="telemetry-label">速度</span><strong id="current-speed">0.00</strong><span>m/s</span></div>
+              <div class="telemetry-item"><span class="telemetry-label">FPS</span><strong id="fps-value">--</strong></div>
+            </div>
+          </div>
+
+          <section class="panel navigation-panel" aria-labelledby="navigation-title">
+            <div class="panel-heading">
+              <div><p class="eyebrow">REAL ROS / ONLINE SLAM + NAV2</p><h3 id="navigation-title">地図・自律走行・Frontier探索</h3></div>
+              <div class="map-heading-actions">
+                <div class="map-zoom-controls" role="group" aria-label="地図の拡大率">
+                  <button id="map-zoom-in" class="map-tool-button" type="button" aria-label="地図を拡大">＋</button>
+                  <button id="map-zoom-out" class="map-tool-button" type="button" aria-label="地図を縮小">−</button>
+                  <button id="map-fit" class="map-tool-button map-fit-button" type="button">Fit</button>
+                </div>
+                <span id="runtime-mode" class="topic-chip state-chip">SIM</span>
+              </div>
+            </div>
+            <p id="navigation-guide" class="panel-note">固定地図navigationと、成長中の地図からfrontierを選ぶexplorationを安全に切り替えます。</p>
+            <div class="map-shell">
+              <canvas id="map-canvas" width="720" height="480" aria-label="ROS OccupancyGrid、探索優先候補、現在位置、目標、経路"></canvas>
+              <div id="map-empty" class="map-empty">SIMモードでは/mapを使いません<br /><small>地図作成は ./start.sh --mapping で開始します</small></div>
+            </div>
+            <div class="map-legend" aria-label="地図の凡例">
+              <span><i class="legend-cell occupied"></i>壁・障害物</span><span><i class="legend-cell free"></i>走れる場所</span><span><i class="legend-cell frontier"></i>frontier</span><span><i class="legend-dot candidate"></i>優先候補</span><span><i class="legend-dot selected"></i>選択goal</span><span><i class="legend-dot unreachable"></i>到達／余白NG</span><span><i class="legend-dot blacklisted"></i>blacklist</span><span><i class="legend-dot scan"></i>現在LiDAR</span><span><i class="legend-dot robot"></i>現在位置</span><span><i class="legend-line global"></i>Global経路</span><span><i class="legend-line local"></i>Local経路</span>
+            </div>
+            <div class="navigation-status-grid">
+              <div><span>Nav2状態</span><strong id="nav-status">未接続</strong></div>
+              <div><span>現在位置</span><strong id="map-pose">-- / -- m</strong></div>
+              <div><span>目標</span><strong id="map-goal">未指定</strong></div>
+              <div><span>経路</span><strong id="path-status">未受信</strong></div>
+              <div><span>runtime / map</span><strong id="state-runtime-map">安定: SIM / map不要</strong></div>
+              <div><span>command / connection / view / task / safety</span><strong id="state-command-view">手動 / SIMULATED / SIM / idle / Safety:clear</strong></div>
+              <div><span>exploration</span><strong id="state-exploration">idle / 構成未準備</strong></div>
+              <div><span>優先候補 / known / 再計画 / 失敗</span><strong id="exploration-metrics">0候補 / 0 cells / 再計画 0回 / 失敗 0回</strong></div>
+            </div>
+            <section class="exploration-control" aria-labelledby="exploration-control-title">
+              <div class="exploration-control-heading">
+                <div class="exploration-heading-copy">
+                  <div class="exploration-title-row"><strong id="exploration-control-title">Frontier Exploration</strong><span id="exploration-thinking" class="exploration-thinking idle" role="status" aria-label="探索処理中" hidden></span></div>
+                  <small>unknown境界を見つけ、既知free側の安全なgoalをNav2へ渡します</small>
+                </div>
+                <span id="exploration-state-chip" class="exploration-state-chip idle">IDLE</span>
+              </div>
+              <p id="exploration-reason" class="exploration-reason">「探索構成を準備」でOnline SLAM＋Nav2を起動します。探索開始はmap・SLAM pose・Nav2の準備完了後だけ受理します。</p>
+              <div id="exploration-coverage" class="exploration-coverage">
+                <div class="exploration-coverage-summary">
+                  <span>探索済み（free＋障害物 / map全体） <strong id="exploration-coverage-current">--%</strong></span>
+                  <span>終了目安 <strong id="exploration-coverage-target">90%以上</strong></span>
+                </div>
+                <div id="exploration-coverage-progress" class="exploration-coverage-progress" role="progressbar" aria-label="探索済み面積" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="探索率はまだ取得できていません">
+                  <span id="exploration-coverage-progress-fill" class="exploration-coverage-progress-fill"></span>
+                  <i id="exploration-coverage-target-marker" class="exploration-coverage-target-marker" title="終了目安の面積条件"></i>
+                </div>
+                <small id="exploration-coverage-status">さらにfrontierなしをfresh mapで3回確認すると終了条件達成です。</small>
+              </div>
+              <div class="exploration-actions" role="group" aria-label="Frontier探索の操作">
+                <button id="prepare-exploration-button" class="button exploration-prepare" type="button">探索構成を準備</button>
+                <button id="start-exploration-button" class="button button-soft" type="button" disabled>探索開始</button>
+                <button id="pause-exploration-button" class="button button-outline" type="button" disabled>一時停止</button>
+                <button id="resume-exploration-button" class="button button-outline" type="button" disabled>再開</button>
+                <button id="stop-exploration-button" class="button exploration-stop" type="button" disabled>終了</button>
+              </div>
+              <div class="exploration-diversion-option">
+                <div><strong>BackUp後の遠方変更</strong><small>後退成功時に現在goalを取消し、旧goalから離れたfrontierへ切り替えます。</small></div>
+                <button id="exploration-diversion-toggle" class="exploration-diversion-toggle" type="button" aria-pressed="false">遠方変更 OFF</button>
+              </div>
+              <div class="exploration-score-grid">
+                <div><span>選択理由</span><strong id="exploration-selection">未選択</strong></div>
+                <div><span>直近の停止／拒否</span><strong id="exploration-last-reason">なし</strong></div>
+              </div>
+            </section>
+            <section class="map-library" aria-labelledby="map-library-title">
+              <div class="map-library-heading">
+                <div><strong id="map-library-title">保存地図</strong><small>MAPPINGまたは停止した探索地図を次回のNav2起動で使用</small></div>
+                <span id="map-count" class="map-count">0件</span>
+              </div>
+              <div class="map-save-row">
+                <label for="map-name-input">地図名</label>
+                <input id="map-name-input" type="text" value="training_room" maxlength="48" pattern="[A-Za-z0-9][A-Za-z0-9_\-]{0,47}" autocomplete="off" spellcheck="false" />
+                <button id="save-map-button" class="button button-soft" type="button" disabled>MAPPING／探索で保存</button>
+              </div>
+              <p id="map-library-message" class="map-library-message">ROS接続後に保存地図を読み込みます。</p>
+              <div class="map-library-row">
+                <select id="map-select" aria-label="保存地図を選択"><option value="">保存地図はまだありません</option></select>
+                <button id="delete-map-button" class="button map-delete-button" type="button" disabled>選択した地図を削除</button>
+              </div>
+            </section>
+            <div class="navigation-actions compact-navigation-actions">
+              <button id="manual-mode-button" class="button button-soft" type="button">手動操作にする</button>
+              <button id="navigation-mode-button" class="button button-outline" type="button">Nav2操作にする</button>
+              <button id="reset-map-button" class="button button-outline" type="button">現在マップをリセット</button>
+              <button id="cancel-goal-button" class="button button-outline" type="button">目標を取り消す</button>
+            </div>
+          </section>
+
+          <section class="panel vision-panel" aria-labelledby="vision-title">
+            <div class="panel-heading">
+              <div><p class="eyebrow">VISION / RGB + DEPTH + YOLOX</p><h3 id="vision-title">Cameraで見て、Depthで測る</h3></div>
+              <span id="vision-source" class="topic-chip state-chip">SIM CAMERA</span>
+            </div>
+            <p class="panel-note">同じcamera pose・timestampのRGBとDepthを表示します。bboxは実ROSのYOLOX Nodeから届いたときだけ重ねます。</p>
+            <div class="vision-views">
+              <figure class="vision-view">
+                <figcaption>RGB <small>320×240 / 垂直64° / 5 Hz</small></figcaption>
+                <div class="vision-canvas-shell">
+                  <canvas id="rgb-camera-canvas" width="320" height="240" aria-label="ロボット搭載RGB Camera"></canvas>
+                  <canvas id="detection-overlay" width="320" height="240" aria-label="実YOLO検出bbox"></canvas>
+                </div>
+              </figure>
+              <figure class="vision-view">
+                <figcaption>疑似カラーDepth <small>0.10〜8.00 m / optical Z</small></figcaption>
+                <canvas id="depth-camera-canvas" width="320" height="240" aria-label="疑似カラーDepth Camera"></canvas>
+                <output id="depth-cursor" class="depth-cursor">画像上を選ぶと距離を表示</output>
+              </figure>
+            </div>
+            <div class="vision-status-grid">
+              <div><span>YOLO</span><strong id="yolo-status">未接続（偽bboxなし）</strong></div>
+              <div><span>推論</span><strong id="vision-latency">-- ms / -- fps</strong></div>
+              <div><span>Model / Device</span><strong id="vision-device">YOLOX-Nano / 未接続</strong></div>
+              <div><span>同期</span><strong id="vision-timestamp">RGB・Depth待機中</strong></div>
+            </div>
+            <div class="vision-flow" aria-label="Visionデータフロー">
+              <span>Camera<small>Browser Scene</small></span><b>/camera/rgb…</b><span>YOLOX Node<small>実rclpy</small></span><b>/vision/detections</b><span>bbox・距離<small>Depth統合</small></span>
+            </div>
+          </section>
+
+          <section class="panel object-search-panel" aria-labelledby="object-search-title">
+            <div class="panel-heading">
+              <div><p class="eyebrow">OBJECT SEARCH CHAT</p><h3 id="object-search-title">ことばで、物体を探索する</h3></div>
+              <span id="object-search-status" class="object-search-status-chip idle">IDLE</span>
+            </div>
+            <div id="local-llm-banner" class="local-llm-banner rule-based" aria-live="polite">
+              <span id="local-llm-state">RULE-BASED · LLM OFF</span>
+              <strong id="local-llm-model">Optional Local LLM</strong>
+              <small id="local-llm-latency">決定的parserだけを使用</small>
+            </div>
+            <p class="panel-note">決定的rule-based parserを先に使い、安全だが未解釈の表現だけをOptional Local LLMで高レベルIntentへ変換します。Online SLAMのlive mapと既存Frontier Explorationを使い、LLMとObject Searchは速度Topicを直接所有しません。</p>
+            <div class="object-search-layout">
+              <div id="object-search-messages" class="object-search-messages" role="log" aria-live="polite" aria-relevant="additions text" aria-label="物体探索チャット履歴"></div>
+              <div class="object-search-summary" aria-label="物体探索の状態">
+                <div><span>Target class</span><strong id="object-search-target">未指定</strong></div>
+                <div><span>Mission</span><strong id="object-search-mission">未開始</strong></div>
+                <div><span>Exploration</span><strong id="object-search-exploration">idle</strong></div>
+                <div><span>YOLO</span><strong id="object-search-yolo">未接続</strong></div>
+                <div class="object-search-reason"><span>状態・理由</span><strong id="object-search-reason">探索命令待ち</strong></div>
+                <div><span>候補confidence</span><strong id="object-search-confidence">未検出</strong></div>
+                <div><span>推定距離</span><strong id="object-search-distance">未計測</strong></div>
+                <div><span>確認progress</span><strong id="object-search-confirmation">0 / 3</strong></div>
+              </div>
+            </div>
+            <div class="object-search-composer">
+              <form id="object-search-form" class="object-search-form">
+                <label for="object-search-input">自然言語の命令</label>
+                <div class="object-search-input-row">
+                  <input id="object-search-input" type="text" maxlength="200" autocomplete="off" spellcheck="false" placeholder="例：バナナを探して" />
+                  <button id="object-search-send" class="button button-soft" type="submit">送信</button>
+                </div>
+              </form>
+              <div class="object-search-actions" role="group" aria-label="物体探索チャットの操作">
+                <button id="object-search-cancel" class="button object-search-cancel" type="button" disabled>探索を中止</button>
+                <button id="object-search-resume" class="button button-outline" type="button" hidden>探索を再開</button>
+              </div>
+            </div>
+            <p id="object-search-alert" class="object-search-alert" role="alert" hidden></p>
+          </section>
+
+          <section id="stage-editor-panel" class="panel stage-editor-panel" aria-labelledby="stage-title">
+            <div class="panel-heading">
+              <div><p class="eyebrow">STAGE EDITOR / TOP-DOWN 3D</p><h3 id="stage-title">Training Roomを編集する</h3></div>
+              <div class="stage-heading-actions">
+                <div class="stage-view-actions" role="group" aria-label="STAGE表示">
+                  <span class="stage-view-label">VIEW</span>
+                  <button id="view-plan" class="stage-tool-button active" type="button" aria-pressed="true"><span aria-hidden="true">📐</span><small>図面</small></button>
+                  <button id="view-camera" class="stage-tool-button" type="button" aria-pressed="false"><span aria-hidden="true">🎥</span><small>カメラ</small></button>
+                </div>
+                <button class="button button-outline reset-origin-button" data-reset-origin type="button">↺ 自機を初期位置へ戻す</button><span id="stage-mode-chip" class="topic-chip state-chip">編集モード / SIM一時停止中</span>
+              </div>
+            </div>
+            <p id="stage-status" class="panel-note">オブジェクトをドラッグで移動、角のハンドルでリサイズ、ホイールで回転します。ツールパレットで追加、Inspectorパレットで数値入力できます。Deleteキーで選択中のオブジェクトを削除できます。</p>
+            <div class="stage-layout">
+              <aside class="stage-palette stage-tools" aria-label="オブジェクト操作ツール">
+                <p class="stage-palette-title">TOOL PALETTE</p>
+                <button class="stage-tool-button" type="button" data-add-object="wall"><span aria-hidden="true">🧱</span><small>壁を追加</small></button>
+                <button class="stage-tool-button" type="button" data-add-object="box"><span aria-hidden="true">📦</span><small>箱を追加</small></button>
+                <button class="stage-tool-button" type="button" data-add-object="gate"><span aria-hidden="true">🚪</span><small>Gate追加</small></button>
+                <button class="stage-tool-button" type="button" data-add-object="vision_target"><span aria-hidden="true">🖼️</span><small>画像パネル</small></button>
+                <p class="stage-palette-title">STAGE SIZE</p>
+                <div id="stage-size-row" class="stage-size-row" role="group" aria-label="ステージサイズ">
+                  <button class="stage-tool-button" data-stage-size="small" type="button"><small>Small</small></button>
+                  <button class="stage-tool-button active" data-stage-size="medium" type="button"><small>標準</small></button>
+                  <button class="stage-tool-button" data-stage-size="large" type="button"><small>Large</small></button>
+                </div>
+                <p class="stage-palette-title">EDIT</p>
+                <div id="stage-mode-row" class="stage-mode-row" role="group" aria-label="操作モード">
+                  <button id="mode-move" class="stage-tool-button active" type="button" aria-pressed="true"><span aria-hidden="true">✥</span><small>移動</small></button>
+                  <button id="mode-rotate" class="stage-tool-button" type="button" aria-pressed="false"><span aria-hidden="true">🔄</span><small>回転</small></button>
+                </div>
+                <button id="duplicate-object-button" class="stage-tool-button" type="button"><span aria-hidden="true">⧉</span><small>複製</small></button>
+                <button id="undo-playground" class="stage-tool-button" type="button"><span aria-hidden="true">↩️</span><small>Undo</small></button>
+                <button id="redo-playground" class="stage-tool-button" type="button"><span aria-hidden="true">↪️</span><small>Redo</small></button>
+                <button id="delete-object-button" class="stage-tool-button stage-danger" type="button"><span aria-hidden="true">🗑️</span><small>選択を削除</small></button>
+                <button id="snap-toggle" class="stage-tool-button active" type="button" aria-pressed="true"><span aria-hidden="true">#️⃣</span><small>grid snap</small></button>
+              </aside>
+              <div id="stage-shell" class="stage-shell">
+                <div id="stage-handles" class="stage-handles" aria-hidden="true"></div>
+                <div class="scene-badge"><span class="live-dot"></span><span id="stage-hint">図面: ドラッグ編集 / カメラ: 右回転・Spaceパン・WASD/Q/R移動</span></div>
+              </div>
+              <aside class="stage-side">
+                <section class="stage-palette" aria-label="object設定">
+                  <p class="stage-palette-title">INSPECTOR</p>
+                  <div class="playground-editor">
+                    <label>選択<select id="playground-object-select"></select></label>
+                    <label>ラベル<input id="object-label" type="text" maxlength="80" autocomplete="off" spellcheck="false" /></label>
+                    <label id="vision-target-asset-field" class="playground-asset-field" hidden>画像<select id="vision-target-asset" aria-label="画像パネルの画像"></select></label>
+                    <label>X (m)<input id="object-x" type="number" min="-4.2" max="4.2" step="0.1" /></label>
+                    <label>Z (m)<input id="object-z" type="number" min="-4.2" max="4.2" step="0.1" /></label>
+                    <label>回転 (°)<input id="object-rotation" type="number" min="-360" max="360" step="5" /></label>
+                    <label>幅 (m)<input id="object-width" type="number" min="0.05" max="8.4" step="0.1" /></label>
+                    <label>高さ (m)<input id="object-height" type="number" min="0.1" max="3" step="0.1" /></label>
+                    <label>奥行 (m)<input id="object-depth" type="number" min="0.03" max="8.4" step="0.1" /></label>
+                  </div>
+                </section>
+                <section class="stage-palette" aria-label="保存と読み込み">
+                  <p class="stage-palette-title">SAVE / EXPORT</p>
+                  <div class="stage-library" aria-labelledby="stage-library-title">
+                    <div class="stage-library-heading">
+                      <div><strong id="stage-library-title">保存Stage</strong><small>Browser内に複数のStageを保存</small></div>
+                      <span id="stage-count" class="map-count">0件</span>
+                    </div>
+                    <div class="stage-save-row">
+                      <label for="stage-name-input">Stage名</label>
+                      <input id="stage-name-input" type="text" value="Training Room" maxlength="80" autocomplete="off" spellcheck="false" />
+                      <button id="save-playground" class="button button-soft" type="button"><span aria-hidden="true">💾</span> Stageを保存</button>
+                    </div>
+                    <p id="stage-library-message" class="stage-library-message">保存Stageはまだありません。</p>
+                    <div class="stage-library-row">
+                      <select id="playground-library-select" aria-label="保存Stageを選択"><option value="">保存Stageはまだありません</option></select>
+                    </div>
+                  </div>
+                  <div class="stage-file-grid">
+                    <button id="load-playground" class="button button-outline" type="button"><span aria-hidden="true">📂</span> 選択Stageを読込</button>
+                    <button id="export-playground" class="button button-outline" type="button"><span aria-hidden="true">⬇️</span> JSON export</button>
+                    <button id="import-playground" class="button button-outline" type="button"><span aria-hidden="true">⬆️</span> JSON import</button>
+                    <button id="reset-playground" class="button button-outline" type="button"><span aria-hidden="true">🔄</span> 既定Training Room</button>
+                    <input id="import-playground-file" type="file" accept="application/json,.json" hidden />
+                    <input id="stage-image-upload-file" type="file" accept="image/jpeg,image/png,video/webm,.jpg,.jpeg,.png,.webm" hidden />
+                  </div>
+                </section>
+              </aside>
+            </div>
+          </section>
+
+          <div class="panel lidar-panel">
+            <div class="panel-heading">
+              <div><p class="eyebrow">SENSOR / 10 HZ</p><h3>LiDARスキャン</h3></div>
+              <span class="topic-chip sensor-chip">/scan</span>
+            </div>
+            <div class="lidar-layout">
+              <div class="lidar-plot-wrap"><canvas id="lidar-canvas" width="300" height="300" aria-label="LiDAR上面図"></canvas></div>
+              <div class="lidar-explanation">
+                <p class="big-explanation">LiDARは、目に見えない物差しを周囲へ飛ばして、物に当たるまでの距離を測ります。</p>
+                <div id="ray-selection" class="ray-selection"><span class="selection-kicker">SELECT A RAY</span><strong>スキャン上の点を選んでください</strong></div>
+                <div class="scan-stats"><span>Scan</span><strong id="ray-count">1080</strong><span>本</span><span class="stats-divider"></span><span>表示</span><strong id="visible-ray-count">180</strong><span>本</span><span class="stats-divider"></span><span>Range</span><strong>8.0</strong><span>m</span></div>
+              </div>
+            </div>
+          </div>
+
+          <section class="panel flow-panel">
+            <div class="panel-heading"><div><p class="eyebrow">CONCEPT MAP</p><h3>データの流れ</h3></div><span class="pulse-label"><span class="pulse-dot"></span>LIVE</span></div>
+            <p class="panel-note">これは初心者向けの概念図です。実ROSグラフとは分けて表示しています。</p>
+            <div id="node-flow" class="node-flow">
+              <div class="flow-node node-controller"><span class="node-icon">⌁</span><span><strong>Controller</strong><small>速度を作る</small></span></div>
+              <div class="flow-connector command-connector"><span class="flow-line"></span><span class="topic-label">/cmd_vel_raw</span><span class="flow-pulse"></span></div>
+              <div class="flow-side-link"><span class="side-source">LiDAR</span><span class="side-line"></span><span class="topic-label">/scan</span><span class="side-target">Safetyへ</span></div>
+              <div class="flow-node node-safety"><span class="node-icon">◆</span><span><strong>Safety Controller</strong><small>前方をチェック</small></span></div>
+              <div class="flow-connector safety-connector"><span class="flow-line"></span><span class="topic-label">/cmd_vel</span><span class="flow-pulse"></span></div>
+              <div class="flow-node node-robot"><span class="node-icon">▣</span><span><strong>Robot Base</strong><small>命令どおり動く</small></span></div>
+            </div>
+            <div class="exploration-concept-flow" aria-label="Frontier探索のデータフロー">
+              <span>SLAM Toolbox<small>live /map</small></span><b>→</b><span>Frontier<small>unknown境界</small></span><b>→</b><span>Nav2 goal<small>既知free側</small></span><b>→</b><span>Command Gate<small>/cmd_vel_raw</small></span><b>→</b><span>Safety<small>/cmd_vel</small></span>
+            </div>
+          </section>
+
+          <section class="panel inspector-panel">
+            <div class="panel-heading"><div><p class="eyebrow">MESSAGE INSPECTOR</p><h3>いま流れているデータ</h3></div><span id="inspector-topic" class="topic-chip command-chip">/cmd_vel</span></div>
+            <div class="inspector-tabs" role="tablist" aria-label="Topic選択">
+              <button class="inspector-tab active" data-topic="/cmd_vel" type="button">/cmd_vel</button>
+              <button class="inspector-tab" data-topic="/scan" type="button">/scan</button>
+              <button class="inspector-tab" data-topic="/odom" type="button">/odom</button>
+              <button class="inspector-tab" data-topic="/camera/camera_info" type="button">CameraInfo</button>
+              <button class="inspector-tab" data-topic="/vision/detections" type="button">Detection</button>
+              <button class="inspector-tab" data-topic="/vision/status" type="button">推論時間</button>
+            </div>
+            <div id="friendly-message" class="friendly-message">前進速度：<strong>0.00 m/s</strong><br />旋回速度：<strong>0.00 rad/s</strong></div>
+            <details class="raw-details"><summary>生データを見る <span>＋</span></summary><pre id="raw-message">{}</pre></details>
+          </section>
+
+          <section class="panel ros-graph-panel">
+            <div class="panel-heading"><div><p class="eyebrow">ACTUAL ROS GRAPH</p><h3>実際に動いているROS</h3></div><span id="ros-graph-updated" class="pulse-label">未接続</span></div>
+            <p class="panel-note">Concept Mapは学習用です。ここにはrosapiが返した実Node・Topic・Actionだけを表示します。</p>
+            <div class="ros-graph-columns">
+              <div><strong>Node</strong><ul id="ros-node-list"><li>--</li></ul></div>
+              <div><strong>Topic</strong><ul id="ros-topic-list"><li>--</li></ul></div>
+              <div><strong>Action</strong><ul id="ros-action-list"><li>--</li></ul></div>
+            </div>
+          </section>
+
+          <section class="panel mission-panel">
+            <div class="panel-heading"><div><p class="eyebrow">LEARNING MISSION</p><h3>今日のミッション</h3></div><span id="mission-progress" class="mission-count">0 / 7</span></div>
+            <div id="mission-list" class="mission-list">
+              <button class="mission-item" data-mission="move" type="button"><span class="mission-check"></span><span><strong>ロボットを動かそう</strong><small>前進・旋回・停止を体験する</small></span><span class="mission-arrow">→</span></button>
+              <button class="mission-item" data-mission="lidar" type="button"><span class="mission-check"></span><span><strong>LiDARで箱を見つけよう</strong><small>スキャンの点と距離を確認する</small></span><span class="mission-arrow">→</span></button>
+              <button class="mission-item" data-mission="safety" type="button"><span class="mission-check"></span><span><strong>自動停止を体験しよう</strong><small>障害物の手前で止まる仕組みを見る</small></span><span class="mission-arrow">→</span></button>
+              <button class="mission-item" data-mission="camera" type="button"><span class="mission-check"></span><span><strong>Cameraで見よう</strong><small>ロボット前面のRGB画像を確認する</small></span><span class="mission-arrow">→</span></button>
+              <button class="mission-item" data-mission="depth" type="button"><span class="mission-check"></span><span><strong>Depthで距離を測ろう</strong><small>疑似カラー画像を選んでm値を見る</small></span><span class="mission-arrow">→</span></button>
+              <button class="mission-item" data-mission="yolo" type="button"><span class="mission-check"></span><span><strong>YOLOで物体を見つけよう</strong><small>実Detection Topicのbboxを見る</small></span><span class="mission-arrow">→</span></button>
+              <button class="mission-item" data-mission="compare" type="button"><span class="mission-check"></span><span><strong>検出とLiDARを比較しよう</strong><small>Camera距離と/scanの違いを確認する</small></span><span class="mission-arrow">→</span></button>
+            </div>
+          </section>
+
+          <section class="panel glossary-panel">
+            <div class="panel-heading"><div><p class="eyebrow">ROS2 BASICS</p><h3>ことばカード</h3></div><span class="card-tip">?</span></div>
+            <div class="glossary-grid">
+              <button class="glossary-card" data-term="Node" type="button"><span class="glossary-icon">N</span><strong>Node</strong><small>仕事を担当するプログラム</small></button>
+              <button class="glossary-card" data-term="Topic" type="button"><span class="glossary-icon">T</span><strong>Topic</strong><small>メッセージの通り道</small></button>
+              <button class="glossary-card" data-term="Message" type="button"><span class="glossary-icon">M</span><strong>Message</strong><small>Nodeが送るデータ</small></button>
+              <button class="glossary-card" data-term="Publisher" type="button"><span class="glossary-icon">↑</span><strong>Publisher</strong><small>データを送る側</small></button>
+            </div>
+          </section>
+
+          <section class="control-strip compact-control panel" aria-labelledby="control-title">
+            <div class="panel-heading">
+              <div><p class="eyebrow">CONTROLLER</p><h3 id="control-title">操作</h3></div>
+              <span class="topic-chip sensor-chip">WASD</span>
+            </div>
+            <div class="compact-control-body">
+              <div class="touch-pad" id="touch-pad" aria-label="タッチ操作パッド">
+                <button class="touch-key touch-up" data-control="forward" type="button" aria-label="前進">↑</button>
+                <button class="touch-key touch-left" data-control="left" type="button" aria-label="左旋回">↺</button>
+                <button class="touch-key touch-stop" data-control="stop" type="button" aria-label="緊急停止">■</button>
+                <button class="touch-key touch-right" data-control="right" type="button" aria-label="右旋回">↻</button>
+                <button class="touch-key touch-down" data-control="backward" type="button" aria-label="後退">↓</button>
+              </div>
+              <button id="reset-button" class="button button-soft" data-reset-origin type="button">↺ 初期位置へ戻す</button>
+            </div>
+          </section>
+
+      </main>
+
+      <footer class="story-footer"><div class="story-marker"><span></span>NOW HAPPENING</div><p id="narration">Wキーを押すと、Controllerが速度命令を作ってTopicへ送ります。</p><div class="footer-actions"><span id="transport-label">Local Topic Bus</span><button id="control-lease-button" class="control-lease-button" data-control-lease type="button" hidden>操作権を取得</button><button id="stop-button" class="emergency-button" type="button">■ 緊急停止</button></div></footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
