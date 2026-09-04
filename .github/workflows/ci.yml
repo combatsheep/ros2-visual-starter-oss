@@ -33,8 +33,6 @@ jobs:
           locked: true
 
       - name: Public release audit
-        env:
-          PUBLIC_RELEASE_ALLOWED_REMOTE_URL: https://github.com/${{ github.repository }}
         run: make public-audit
 
       - name: Install frontend dependencies

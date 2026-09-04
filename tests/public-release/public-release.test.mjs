@@ -455,20 +455,26 @@ test('CI external actions use immutable commit SHAs', async () => {
   for (const action of actionUses) assert.match(action, /@[0-9a-f]{40}$/u);
 });
 
-test('Git remote is absent or exactly the explicitly allowed public remote', async () => {
+test('normal public audit does not require a specific Git remote', async () => {
+  if (process.env.PUBLIC_RELEASE_AUDIT_MODE !== 'release') return;
   const { stdout } = await execFileAsync('git', ['remote', '-v'], { cwd: repositoryRoot, encoding: 'utf8' });
   const lines = stdout.trim().split('\n').filter(Boolean);
-  const allowedRemote = process.env.PUBLIC_RELEASE_ALLOWED_REMOTE_URL?.trim();
-  if (!allowedRemote) {
-    assert.deepEqual(lines, [], 'public draft must not have a remote');
-    return;
-  }
-  assert.equal(lines.length, 2, 'the public repository must have one fetch/push remote pair');
+  assert.equal(lines.length, 2, 'release audit requires one fetch/push remote pair');
+  const expectedRepository = 'combatsheep/ros2-visual-starter-oss';
+  const normalizeGitHubRemote = (remote) => {
+    const value = remote.trim().replace(/\.git$/u, '');
+    const ssh = /^git@github\.com:(.+)$/u.exec(value);
+    if (ssh) return ssh[1];
+    const sshUrl = /^ssh:\/\/git@github\.com\/(.+)$/u.exec(value);
+    if (sshUrl) return sshUrl[1];
+    const https = /^https:\/\/github\.com\/(.+)$/u.exec(value);
+    return https?.[1] ?? null;
+  };
   const directions = new Set();
   for (const line of lines) {
     const match = /^origin\t(.+) \((fetch|push)\)$/u.exec(line);
     assert.ok(match, `unexpected remote entry: ${line}`);
-    assert.equal(match[1], allowedRemote, `unexpected remote URL: ${match[1]}`);
+    assert.equal(normalizeGitHubRemote(match[1]), expectedRepository, `unexpected remote URL: ${match[1]}`);
     directions.add(match[2]);
   }
   assert.deepEqual(directions, new Set(['fetch', 'push']));
@@ -476,7 +482,7 @@ test('Git remote is absent or exactly the explicitly allowed public remote', asy
 
 test('reachable public history has the clean-room root and permits normal contributors', async (context) => {
   if (!await hasCommit()) {
-    if (process.env.PUBLIC_RELEASE_REQUIRE_SINGLE_COMMIT === '1') assert.fail('single-commit release audit requires a commit');
+    if (process.env.PUBLIC_RELEASE_AUDIT_MODE === 'release') assert.fail('release audit requires a commit');
     context.skip('initial public commit has not been created yet');
     return;
   }
@@ -508,10 +514,9 @@ test('reachable public history has the clean-room root and permits normal contri
   }
   const { stdout: rootMessage } = await execFileAsync('git', ['log', '--all', '--root', '--format=%B'], { cwd: repositoryRoot, encoding: 'utf8' });
   assert.match(rootMessage, /^Initial open-source release\s*$/mu);
-  if (process.env.PUBLIC_RELEASE_REQUIRE_SINGLE_COMMIT === '1') {
-    assert.equal(fields.length, 8, 'initial release must have exactly one commit');
+  if (process.env.PUBLIC_RELEASE_AUDIT_MODE === 'release') {
     const { stdout: status } = await execFileAsync('git', ['status', '--porcelain=v1', '--untracked-files=all'], { cwd: repositoryRoot, encoding: 'utf8' });
-    assert.equal(status, '', 'initial release audit requires a clean working tree');
+    assert.equal(status, '', 'release audit requires a clean working tree');
   }
   assert.deepEqual(violations, []);
 });

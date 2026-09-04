@@ -39,7 +39,7 @@ Linux、Windows、Intel MacはOSS初版の正式サポート対象外です。�
 Git、curl、インターネット接続が必要です。`setup.sh`は固定したPixiをユーザー領域へ導入し、lockfileどおりのNode.js 22、Python、ROS 2依存を準備します。`sudo`は使いません。
 
 ```bash
-git clone https://example.invalid/ros2-visual-starter-oss.git
+git clone https://github.com/combatsheep/ros2-visual-starter-oss.git
 cd ros2-visual-starter-oss
 ./setup.sh
 ./run.sh --sim
@@ -138,3 +138,6 @@ LLM runtimeとmodelはこのrepositoryに同梱せず、`setup.sh`でも自動�
 - Third-party notice: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 - Assetと再配布条件: [ASSETS.md](ASSETS.md)
 - Dependency license audit: [docs/DEPENDENCY_LICENSE_AUDIT.md](docs/DEPENDENCY_LICENSE_AUDIT.md)
+
+ROS is a trademark of Open Source Robotics Foundation, Inc.
+This independent project is not affiliated with or endorsed by Open Robotics.

@@ -13,9 +13,10 @@
 Node.js 22、Python 3.12、ROS 2 Jazzyとruntime dependencyは`pixi.toml`と`pixi.lock`で管理します。systemへROS 2を別途導入する必要はありません。
 
 ```bash
-git clone https://example.invalid/ros2-visual-starter-oss.git
+git clone https://github.com/combatsheep/ros2-visual-starter-oss.git
 cd ros2-visual-starter-oss
 ./setup.sh
+./run.sh --sim
 ```
 
 `setup.sh`は固定したPixiを必要に応じてユーザー領域へ導入し、`./scripts/pixi.sh install --locked`、`npm ci`、Vision assetのchecksum検証を実行します。`sudo`とHomebrewは要求しません。以降は、shellの`PATH`を変更しない導入でも動くrepository内wrapperを使用します。
@@ -143,11 +144,15 @@ LLMなしの決定論パーサーが常に先です。LLM統合を変更する�
 make public-audit
 ```
 
-初回公開直前のclean-room commitだけは、通常監査とは別の初回公開監査を実行します。
+公開直前の管理者チェックは、通常監査とは別のrelease auditを実行します。
 
 ```bash
-make initial-release-audit
+make release-audit
 ```
+
+通常の`make public-audit`はremote、commit数、contributorのauthor情報を固定しません。
+clone、fork、Pull Requestで実行できます。`make release-audit`だけはclean working tree、
+本repositoryのorigin、clean-room rootを確認します。
 
 ## 依存更新
 

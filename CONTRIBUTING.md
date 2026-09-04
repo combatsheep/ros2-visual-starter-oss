@@ -12,7 +12,7 @@ ROS2 Visual Starterへの改善提案を歓迎します。本プロジェクト�
 ## セットアップ
 
 ```bash
-git clone https://example.invalid/ros2-visual-starter-oss.git
+git clone https://github.com/combatsheep/ros2-visual-starter-oss.git
 cd ros2-visual-starter-oss
 ./setup.sh
 ./run.sh --sim
@@ -98,4 +98,11 @@ Pull Requestには次を含めてください。
 - 実行できなかった検証と理由
 - UI変更時の画像または短い動画。ただし個人情報や非公開環境を含めないこと
 
-Contributionはrepositoryの[LICENSE](LICENSE)と同じ条件で提供できるものに限ります。
+本プロジェクトのfirst-party部分へのContributionは、MIT Licenseで提供してください。
+
+第三者由来、または第三者projectのcode・config・exampleを改変したファイルへのContributionには、
+各ファイルのSPDX headerおよび[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)、
+[docs/DEPENDENCY_LICENSE_AUDIT.md](docs/DEPENDENCY_LICENSE_AUDIT.md)に記載された適用ライセンスが
+引き続き適用されます。
+
+再配布権やライセンスが確認できない第三者asset・code・configはPull Requestへ含めないでください。
