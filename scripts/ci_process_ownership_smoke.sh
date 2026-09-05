@@ -160,6 +160,77 @@ exercise_pre_ready_owner_failure() {
   current_runner_pid=""
 }
 
+exercise_slow_service_bootstrap() {
+  local runner_pid ready service pid token
+  ROS2_VISUAL_TEST_READY_DELAY_MS=3000 ROS2_VISUAL_LLM_ENABLED=1 ROS2_VISUAL_LLM_MODEL=ci-model ROS2_VISUAL_NO_OPEN=1 \
+    ./run.sh --sim >.logs/ci-slow-service-bootstrap.log 2>&1 &
+  runner_pid=$!
+  current_runner_pid="$runner_pid"
+  ready=0
+  for _ in {1..300}; do
+    if port_is_open 27182 && port_is_open 27184; then ready=1; break; fi
+    if ! process_is_running "$runner_pid"; then break; fi
+    sleep .1
+  done
+  if [[ "$ready" != "1" ]]; then
+    tail -n 50 .logs/ci-slow-service-bootstrap.log >&2 || true
+    echo "3秒遅延したservice bootstrapを正常に待機できませんでした。" >&2
+    return 1
+  fi
+  for service in frontend optional_llm; do
+    pid="$(<".logs/${service}.pid")"
+    token="$(<".logs/${service}.token")"
+    [[ "$(<".logs/${service}.session_ready")" == "$pid" ]]
+    process_is_owned "$pid" "$service"
+    process_group_has_generation_identity "$pid" "$service" "$token"
+  done
+  ./stop.sh >/dev/null
+  wait "$runner_pid"
+  assert_stopped
+  current_runner_pid=""
+  echo "Delayed Frontend/Optional LLM session readiness: PASS"
+}
+
+exercise_activation_failure() {
+  local outcome="$1" runner_pid elapsed result started
+  local fake_pixi="$ROOT_DIR/.logs/ci-activation-${outcome}.sh"
+  if [[ "$outcome" == "exit" ]]; then
+    printf '#!/bin/sh\necho "CI activation failure detail" >&2\nexit 17\n' > "$fake_pixi"
+  else
+    printf '#!/bin/sh\necho "CI activation still pending" >&2\nexec sleep 30\n' > "$fake_pixi"
+  fi
+  chmod +x "$fake_pixi"
+  started=$SECONDS
+  PIXI_EXE="$fake_pixi" ROS2_VISUAL_LLM_ENABLED=0 ROS2_VISUAL_NO_OPEN=1 \
+    ./run.sh --sim >".logs/ci-activation-${outcome}.log" 2>&1 &
+  runner_pid=$!
+  current_runner_pid="$runner_pid"
+  # Independent watchdog catches a regression to unbounded waiting.
+  for _ in {1..400}; do
+    if ! process_is_running "$runner_pid"; then break; fi
+    sleep .05
+  done
+  if process_is_running "$runner_pid"; then
+    echo "activation失敗後もlauncherが終了しません。" >&2
+    return 1
+  fi
+  result=0
+  wait "$runner_pid" || result=$?
+  elapsed=$((SECONDS - started))
+  [[ "$result" != "0" ]]
+  if [[ "$outcome" == "exit" ]]; then
+    [[ "$elapsed" -lt 8 ]]
+    grep -q 'bootstrap processが終了' ".logs/ci-activation-${outcome}.log"
+    grep -q 'CI activation failure detail' ".logs/ci-activation-${outcome}.log"
+  else
+    grep -q '10秒以内に完了しませんでした' ".logs/ci-activation-${outcome}.log"
+  fi
+  assert_stopped
+  rm -f "$fake_pixi"
+  current_runner_pid=""
+  echo "Activation ${outcome}: expected failure and owned cleanup PASS (${elapsed}s)"
+}
+
 exercise_ros_group_leader_failure() {
   local runner_pid ros_pid replacement_pid ready http_code runtime_state websocket_status
   ROS2_VISUAL_NO_OPEN=1 ./run.sh --ros >.logs/ci-ros-group-leader.log 2>&1 &
@@ -498,6 +569,9 @@ assert_stopped
 exercise_owned_lock
 exercise_foreign_rosbridge_listener
 exercise_pre_ready_owner_failure
+exercise_slow_service_bootstrap
+exercise_activation_failure exit
+exercise_activation_failure timeout
 exercise_group_leader_failure frontend
 exercise_optional_llm_failure
 exercise_runtime_worker_failure

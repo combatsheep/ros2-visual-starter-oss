@@ -16,7 +16,7 @@ const ignoredDirectories = new Set([
   '__pycache__', 'coverage', 'dist', 'node_modules', 'output',
 ]);
 const allowedRootEntries = new Set([
-  '.env.example', '.github', '.gitignore', 'ASSETS.md', 'CONTRIBUTING.md', 'LICENSE',
+  '.agents', '.env.example', '.github', '.gitignore', 'ASSETS.md', 'CONTRIBUTING.md', 'LICENSE',
   'LICENSES', 'Makefile', 'README.md', 'SECURITY.md', 'THIRD_PARTY_NOTICES.md', 'assets', 'backend',
   'docs', 'eslint.config.js', 'examples', 'index.html', 'maps', 'package-lock.json',
   'package.json', 'pixi.lock', 'pixi.toml', 'public', 'run.sh', 'scripts', 'setup.sh',
@@ -149,7 +149,11 @@ test('workspace root uses the public allowlist', async () => {
 });
 
 test('workspace contains no unexpected hidden source files', async () => {
-  const allowedHiddenFiles = new Set(['.env.example', '.gitignore']);
+  const allowedHiddenFiles = new Set([
+    '.env.example',
+    '.gitignore',
+    '.agents/skills/install-ros2-visual-starter/SKILL.md',
+  ]);
   const violations = (await auditedFiles())
     .map(relative)
     .filter((file) => {
@@ -415,6 +419,7 @@ test('required public documentation and package license are present', async () =
     'ASSETS.md', 'docs/ARCHITECTURE.md', 'docs/DEVELOPMENT.md', 'docs/STATE_MACHINE.md',
     'docs/OPTIONAL_LOCAL_LLM.md', 'docs/TROUBLESHOOTING.md',
     'docs/DEPENDENCY_LICENSE_AUDIT.md', '.github/workflows/ci.yml',
+    '.agents/skills/install-ros2-visual-starter/SKILL.md',
   ];
   for (const file of required) await access(path.join(repositoryRoot, file));
   const packageJson = JSON.parse(await readFile(path.join(repositoryRoot, 'package.json'), 'utf8'));
@@ -435,6 +440,23 @@ test('required public documentation and package license are present', async () =
     'ROS2_VISUAL_LLM_MODEL=',
     'ROS2_VISUAL_LLM_TOKEN=',
   ]);
+});
+
+test('repository install skill delegates to reviewed local entrypoints', async () => {
+  const skill = await readFile(path.join(
+    repositoryRoot,
+    '.agents', 'skills', 'install-ros2-visual-starter', 'SKILL.md',
+  ), 'utf8');
+  assert.match(skill, /^---\nname: install-ros2-visual-starter\ndescription: [^\n]+\n---\n/u);
+  assert.match(skill, /Use the repository's `\.\/setup\.sh` as the only installation entrypoint\./u);
+  assert.match(skill, /`\.\/scripts\/doctor\.sh`/u);
+  assert.match(skill, /`\.\/scripts\/ci_sim_smoke\.sh`/u);
+  assert.match(skill, /`\.\/run\.sh --sim`/u);
+  assert.match(skill, /`http:\/\/127\.0\.0\.1:27182\/`/u);
+  assert.match(skill, /Do not use `sudo`/u);
+  assert.match(skill, /Do not bypass checksum, version, lockfile, platform, or localhost-only checks\./u);
+  assert.doesNotMatch(skill, /https?:\/\/pixi\.sh\/install\.sh/u);
+  assert.doesNotMatch(skill, /(?:curl|wget)[^\n]*\|[^\n]*(?:bash|sh|zsh)/u);
 });
 
 test('shell entrypoints are executable and declare strict mode', async () => {
@@ -458,12 +480,12 @@ test('CI external actions use immutable commit SHAs', async () => {
 // Reviewed trust-boundary snapshots: any edit requires reviewing verification-before-use again.
 // No automatic digest regeneration in CI. Behavior tests exercise real hashing and extraction order.
 const reviewedDownloadScripts = new Map([
-  ['start.sh', '3ca90d54492f2061c134dbd35a01b8eab71db2848e99138cddb4e6563902a208'],
+  ['start.sh', '0ebf1f2688a39f029147058da934fc99c4a94283282cb4af08f6cc6a6a853a61'],
   ['setup.sh', '32605c4d398157b18f71325f80b7dfcc703e3aed739155fe45ebfa59aeb240f3'],
   ['scripts/bootstrap_pixi.sh', '944b9c616c5792e05ffd119308b1b2b322da31d7f2b929b2c9c3fd9ca43574e6'],
   ['scripts/download_vision_assets.sh', '9008ff2f45f8f1950e5a9bbde523f06238a9873de788334e3a7f3c57b69c99ed'],
   ['scripts/ci_sim_smoke.sh', '13c2db4f49403f478d91d89712180ffa883a79d8681d52dad9464fcef2ba0709'],
-  ['scripts/ci_process_ownership_smoke.sh', '810afb6ea909a124df0dcf590c4d028a2847910a2ada82a691a97b4b0fef3e6f'],
+  ['scripts/ci_process_ownership_smoke.sh', 'a2a00e53ae208a6fe579e08bdbc86ab488c8a6e0c125b3b5a59e7a2ce9e6fb99'],
 ]);
 
 function downloadPolicyViolations(file, content) {

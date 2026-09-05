@@ -60,6 +60,23 @@ Node.js 22をPixi経由で使っているか確認します。
 ./scripts/pixi.sh run vision-smoke
 ```
 
+## 初回起動で専用process groupを確立できない
+
+Pixiのactivationは初回や低速環境で時間がかかることがあります。FrontendとOptional Local LLMは、
+bootstrapが生存している間、`session_ready`を最大10秒待ちます。PID・PGID・世代tokenが一致した
+専用sessionだけを受理し、準備前にprocessが終了した場合は待機を打ち切って起動logの末尾を表示します。
+10秒経過しても準備できない場合はtimeoutとして通知します。Frontend失敗時は所有processを回収します。
+
+画面に表示された`.logs/frontend.log`の実エラーを確認してください。activation失敗ならPixiの
+エラー詳細も表示されます。Optional Local LLMの失敗は`.logs/optional_llm.log`に記録され、
+ルールベースの処理とFrontendは継続します。待機を無制限にしたり、所有確認を無効にしたりしないでください。
+
+開発時の遅延再現には、既存のテスト専用設定を使えます（通常の起動では設定不要です）。
+
+```bash
+ROS2_VISUAL_TEST_READY_DELAY_MS=3000 ./scripts/ci_sim_smoke.sh
+```
+
 ## Browserが開かない
 
 自動openの失敗だけではruntimeは停止しません。手動で次を開きます。
