@@ -16,7 +16,7 @@ const ignoredDirectories = new Set([
   '__pycache__', 'coverage', 'dist', 'node_modules', 'output',
 ]);
 const allowedRootEntries = new Set([
-  '.env.example', '.github', '.gitignore', 'ASSETS.md', 'CONTRIBUTING.md', 'LICENSE',
+  '.agents', '.env.example', '.github', '.gitignore', 'ASSETS.md', 'CONTRIBUTING.md', 'LICENSE',
   'LICENSES', 'Makefile', 'README.md', 'SECURITY.md', 'THIRD_PARTY_NOTICES.md', 'assets', 'backend',
   'docs', 'eslint.config.js', 'examples', 'index.html', 'maps', 'package-lock.json',
   'package.json', 'pixi.lock', 'pixi.toml', 'public', 'run.sh', 'scripts', 'setup.sh',
@@ -149,7 +149,11 @@ test('workspace root uses the public allowlist', async () => {
 });
 
 test('workspace contains no unexpected hidden source files', async () => {
-  const allowedHiddenFiles = new Set(['.env.example', '.gitignore']);
+  const allowedHiddenFiles = new Set([
+    '.env.example',
+    '.gitignore',
+    '.agents/skills/install-ros2-visual-starter/SKILL.md',
+  ]);
   const violations = (await auditedFiles())
     .map(relative)
     .filter((file) => {
@@ -415,6 +419,7 @@ test('required public documentation and package license are present', async () =
     'ASSETS.md', 'docs/ARCHITECTURE.md', 'docs/DEVELOPMENT.md', 'docs/STATE_MACHINE.md',
     'docs/OPTIONAL_LOCAL_LLM.md', 'docs/TROUBLESHOOTING.md',
     'docs/DEPENDENCY_LICENSE_AUDIT.md', '.github/workflows/ci.yml',
+    '.agents/skills/install-ros2-visual-starter/SKILL.md',
   ];
   for (const file of required) await access(path.join(repositoryRoot, file));
   const packageJson = JSON.parse(await readFile(path.join(repositoryRoot, 'package.json'), 'utf8'));
@@ -435,6 +440,23 @@ test('required public documentation and package license are present', async () =
     'ROS2_VISUAL_LLM_MODEL=',
     'ROS2_VISUAL_LLM_TOKEN=',
   ]);
+});
+
+test('repository install skill delegates to reviewed local entrypoints', async () => {
+  const skill = await readFile(path.join(
+    repositoryRoot,
+    '.agents', 'skills', 'install-ros2-visual-starter', 'SKILL.md',
+  ), 'utf8');
+  assert.match(skill, /^---\nname: install-ros2-visual-starter\ndescription: [^\n]+\n---\n/u);
+  assert.match(skill, /Use the repository's `\.\/setup\.sh` as the only installation entrypoint\./u);
+  assert.match(skill, /`\.\/scripts\/doctor\.sh`/u);
+  assert.match(skill, /`\.\/scripts\/ci_sim_smoke\.sh`/u);
+  assert.match(skill, /`\.\/run\.sh --sim`/u);
+  assert.match(skill, /`http:\/\/127\.0\.0\.1:27182\/`/u);
+  assert.match(skill, /Do not use `sudo`/u);
+  assert.match(skill, /Do not bypass checksum, version, lockfile, platform, or localhost-only checks\./u);
+  assert.doesNotMatch(skill, /https?:\/\/pixi\.sh\/install\.sh/u);
+  assert.doesNotMatch(skill, /(?:curl|wget)[^\n]*\|[^\n]*(?:bash|sh|zsh)/u);
 });
 
 test('shell entrypoints are executable and declare strict mode', async () => {
