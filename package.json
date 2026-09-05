@@ -21,7 +21,7 @@
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",
     "roslib": "^2.1.0",
-    "three": "^0.178.0"
+    "three": "^0.185.1"
   },
   "overrides": {
     "@xmldom/xmldom": "0.9.12"
