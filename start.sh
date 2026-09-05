@@ -192,21 +192,7 @@ if [[ "$OPTIONAL_LLM_ENABLED" == "1" ]]; then
   optional_llm_bootstrap_pid=$!
   printf '%s\n' "$optional_llm_bootstrap_pid" > .logs/optional_llm.bootstrap.pid
   optional_llm_pid=""
-  for _ in {1..250}; do
-    recorded_pid="$(cat .logs/optional_llm.pid 2>/dev/null || true)"
-    recorded_pgid="$(cat .logs/optional_llm.pgid 2>/dev/null || true)"
-    recorded_token="$(cat .logs/optional_llm.token 2>/dev/null || true)"
-    session_ready="$(cat .logs/optional_llm.session_ready 2>/dev/null || true)"
-    if [[ "$recorded_pid" =~ ^[1-9][0-9]*$ && "$recorded_pgid" == "$recorded_pid" ]] \
-      && [[ "$recorded_token" =~ ^[0-9a-f]{32}$ && "$session_ready" == "$recorded_pid" ]] \
-      && process_is_running "$recorded_pid"; then
-      optional_llm_pid="$recorded_pid"
-      break
-    fi
-    if ! process_is_running "$optional_llm_bootstrap_pid"; then break; fi
-    sleep .02
-  done
-  if [[ -z "$optional_llm_pid" ]]; then
+  if ! optional_llm_pid="$("$PIXI_PYTHON" scripts/wait_service_session.py optional_llm "$optional_llm_bootstrap_pid" "$optional_llm_bootstrap_token")"; then
     echo "警告: Optional Local LLM adapterの専用process groupを確立できません。Rule-based parserと他のruntimeは継続します。" >&2
   fi
   if [[ -n "$optional_llm_pid" ]]; then
@@ -241,21 +227,7 @@ env -u ROS2_VISUAL_LLM_TOKEN \
 frontend_bootstrap_pid=$!
 printf '%s\n' "$frontend_bootstrap_pid" > .logs/frontend.bootstrap.pid
 frontend_pid=""
-for _ in {1..50}; do
-  recorded_pid="$(cat .logs/frontend.pid 2>/dev/null || true)"
-  recorded_pgid="$(cat .logs/frontend.pgid 2>/dev/null || true)"
-  recorded_token="$(cat .logs/frontend.token 2>/dev/null || true)"
-  session_ready="$(cat .logs/frontend.session_ready 2>/dev/null || true)"
-  if [[ "$recorded_pid" =~ ^[1-9][0-9]*$ && "$recorded_pgid" == "$recorded_pid" ]] \
-    && [[ "$recorded_token" =~ ^[0-9a-f]{32}$ && "$session_ready" == "$recorded_pid" ]] \
-    && process_is_running "$recorded_pid"; then
-    frontend_pid="$recorded_pid"
-    break
-  fi
-  if ! process_is_running "$frontend_bootstrap_pid"; then break; fi
-  sleep .02
-done
-if [[ -z "$frontend_pid" ]]; then
+if ! frontend_pid="$("$PIXI_PYTHON" scripts/wait_service_session.py frontend "$frontend_bootstrap_pid" "$frontend_bootstrap_token")"; then
   echo "Frontendの専用process groupを確立できませんでした。" >&2
   exit 1
 fi

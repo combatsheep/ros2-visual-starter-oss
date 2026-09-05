@@ -187,7 +187,10 @@ terminate_runtime_owner_children() {
     [[ -n "$child_pid" ]] || continue
     if [[ "$child_pid" != "$excluded_pid" ]]; then collect_process_tree "$child_pid" "$excluded_pid"; fi
   done < <(ps -axo pid=,ppid= | awk -v parent="$owner_pid" '$2 == parent { print $1 }')
-  if (( ${#PROCESS_TREE[@]} > 0 )); then kill "${PROCESS_TREE[@]}" 2>/dev/null || true; fi
+  # An early bootstrap exit can leave the launcher with no children other
+  # than this stop operation. Avoid empty-array expansion under Bash 3.2 -u.
+  (( ${#PROCESS_TREE[@]} > 0 )) || return 0
+  kill "${PROCESS_TREE[@]}" 2>/dev/null || true
   for attempt in {1..25}; do
     running=0
     for pid in "${PROCESS_TREE[@]}"; do if process_is_running "$pid"; then running=1; fi; done
@@ -264,6 +267,9 @@ process_group_has_generation_identity() {
   local expected_token="$3"
   local member_pid
   collect_process_group "$target_pgid"
+  # Bash 3.2 with nounset cannot expand an empty array. An empty group has no
+  # generation anchor; let bootstrap cleanup remove its stale records safely.
+  (( ${#PROCESS_GROUP_MEMBERS[@]} > 0 )) || return 1
   for member_pid in "${PROCESS_GROUP_MEMBERS[@]}"; do
     if [[ "$(process_cwd "$member_pid")" == "$PROCESS_ROOT" ]] \
       && { process_is_generation_sentinel "$member_pid" "$kind" "$expected_token" \
