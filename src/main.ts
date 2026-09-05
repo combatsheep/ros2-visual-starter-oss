@@ -1,3 +1,4 @@
+import { disposeRegisteredStageImages } from './stageImages';
 import { appPath } from './appPaths';
 import { BrowserControlLease } from './controlLease';
 import { Simulation } from './simulation';
@@ -76,7 +77,11 @@ async function start(): Promise<void> {
       void controlLease.stop();
     }
   });
-  window.addEventListener('pagehide', () => controlLease.dispose(), { once: true });
+  window.addEventListener('pagehide', (event) => {
+    controlLease.dispose();
+    // Keep URLs alive while the document is retained in the back/forward cache.
+    if (!event.persisted) disposeRegisteredStageImages();
+  });
   simulation.start();
   if (import.meta.env.DEV) {
     (window as Window & { __ros2VisualDiagnostics?: () => ReturnType<Simulation['getResourceDiagnostics']> }).__ros2VisualDiagnostics = () => simulation.getResourceDiagnostics();
