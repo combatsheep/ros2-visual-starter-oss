@@ -73,7 +73,7 @@ Run:
 
 Treat any failed doctor check as an installation problem that still needs resolution. Do not report success while a required check is failing.
 
-For additional non-persistent SIM verification when appropriate, use the repository's existing smoke test rather than inventing a new launcher sequence:
+For additional non-persistent SIM verification when appropriate, use `./scripts/ci_sim_smoke.sh`, the repository's existing smoke test, rather than inventing a new launcher sequence:
 
 ```bash
 ./scripts/ci_sim_smoke.sh
