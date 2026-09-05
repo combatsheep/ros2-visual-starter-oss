@@ -52,7 +52,7 @@ Navigation goalはadapterの`sendNavigationGoal`、地図保存とresetはadapte
 
 ### STAGE editor
 
-`src/playground.ts`はstage schemaと値域を検査し、`src/stageImages.ts`はlocal mediaの形式と寸法を検査します。Stage定義はBrowser localStorage、追加mediaはIndexedDBに保存します。任意URLやserver uploadは使用しません。
+`src/playground.ts`はstage schemaと値域を検査し、`src/stageImages.ts`はlocal mediaの形式・容量・寸法と動画の長さを検査します。Stage定義はBrowser localStorage、追加mediaはIndexedDBに保存します。任意URLやserver uploadは使用しません。
 
 ## ROS backend層
 

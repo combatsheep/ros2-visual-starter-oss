@@ -455,6 +455,73 @@ test('CI external actions use immutable commit SHAs', async () => {
   for (const action of actionUses) assert.match(action, /@[0-9a-f]{40}$/u);
 });
 
+// Reviewed trust-boundary snapshots: any edit requires reviewing verification-before-use again.
+// No automatic digest regeneration in CI. Behavior tests exercise real hashing and extraction order.
+const reviewedDownloadScripts = new Map([
+  ['start.sh', '3ca90d54492f2061c134dbd35a01b8eab71db2848e99138cddb4e6563902a208'],
+  ['setup.sh', '32605c4d398157b18f71325f80b7dfcc703e3aed739155fe45ebfa59aeb240f3'],
+  ['scripts/bootstrap_pixi.sh', '944b9c616c5792e05ffd119308b1b2b322da31d7f2b929b2c9c3fd9ca43574e6'],
+  ['scripts/download_vision_assets.sh', '9008ff2f45f8f1950e5a9bbde523f06238a9873de788334e3a7f3c57b69c99ed'],
+  ['scripts/ci_sim_smoke.sh', '13c2db4f49403f478d91d89712180ffa883a79d8681d52dad9464fcef2ba0709'],
+  ['scripts/ci_process_ownership_smoke.sh', '810afb6ea909a124df0dcf590c4d028a2847910a2ada82a691a97b4b0fef3e6f'],
+]);
+
+function downloadPolicyViolations(file, content) {
+  const violations = [];
+  const normalized = content.replace(/\\\r?\n/gu, ' ');
+  const downloader = /\b(?:curl|wget)\b/u;
+  const remoteShell = /(?:\b(?:curl|wget)\b[^\n]*\|[^\n]*\b(?:bash|sh|zsh)\b|\b(?:bash|sh|zsh|eval|source)\b[^\n]*(?:<\(|\$\()[^\n]*\b(?:curl|wget)\b)/u;
+  if (remoteShell.test(normalized)) violations.push('remote shell execution');
+  if (/https?:\/\/pixi\.sh\/install\.sh/u.test(normalized)) violations.push('mutable installer');
+  const reviewed = reviewedDownloadScripts.get(file);
+  if (reviewed && createHash('sha256').update(content).digest('hex') !== reviewed) {
+    violations.push('download boundary changed without integrity review');
+  }
+  if (downloader.test(normalized) && !reviewed) violations.push('unreviewed download boundary');
+  return violations;
+}
+
+test('remote installers and unreviewed executable download boundaries are rejected', async () => {
+  for (const absolutePath of await auditedFiles()) {
+    const file = relative(absolutePath);
+    if (!file.endsWith('.sh') && !file.startsWith('.github/workflows/')) continue;
+    assert.deepEqual(downloadPolicyViolations(file, await readFile(absolutePath, 'utf8')), [], file);
+  }
+  for (const file of reviewedDownloadScripts.keys()) await access(path.join(repositoryRoot, file));
+});
+
+test('download policy rejects pipes, substitutions, staged installers, and missing verification', async () => {
+  for (const bad of [
+    'curl https://example.invalid/tool | bash',
+    'wget -qO- https://example.invalid/tool | sh',
+    'curl https://example.invalid/tool | tee download | /bin/sh',
+    'bash <(curl https://example.invalid/tool)',
+    'sh -c "$(curl https://example.invalid/tool)"',
+    'curl -o installer https://example.invalid/install.sh\nbash installer',
+    'curl -o executable https://example.invalid/bin\nchmod +x executable\n./executable',
+    ['curl https://example.invalid/tool', ' | bash'].join('\\\n'),
+  ]) assert.ok(downloadPolicyViolations('scripts/unreviewed.sh', bad).length > 0);
+  const file = 'scripts/bootstrap_pixi.sh';
+  const content = await readFile(path.join(repositoryRoot, file), 'utf8');
+  assert.deepEqual(downloadPolicyViolations(file, content), []);
+  assert.ok(downloadPolicyViolations(file, content.replace('exit 1', ':')).length > 0);
+  assert.ok(downloadPolicyViolations(file, content.replace('actual_sha256="$(sha256_file "$archive")"', 'actual_sha256="$expected_sha256"')).length > 0);
+});
+
+test('all repository workflows pin actions and keep the token read-only', async () => {
+  for (const file of await readdir(path.join(repositoryRoot, '.github/workflows'))) {
+    if (!/\.ya?ml$/u.test(file)) continue;
+    const content = await readFile(path.join(repositoryRoot, '.github/workflows', file), 'utf8');
+    for (const match of content.matchAll(/^\s*-?\s*uses:\s*([^\s#]+)/gmu)) {
+      assert.match(match[1], /@[0-9a-f]{40}$/u, file);
+    }
+    assert.match(content, /^permissions:\n {2}contents: read\n/mu);
+    assert.doesNotMatch(content, /:\s*(?:write|write-all)\s*$/mu);
+  }
+  await access(path.join(repositoryRoot, '.github/dependabot.yml'));
+  await access(path.join(repositoryRoot, 'docs/REPOSITORY_SECURITY_SETTINGS.md'));
+});
+
 test('normal public audit does not require a specific Git remote', async () => {
   if (process.env.PUBLIC_RELEASE_AUDIT_MODE !== 'release') return;
   const { stdout } = await execFileAsync('git', ['remote', '-v'], { cwd: repositoryRoot, encoding: 'utf8' });

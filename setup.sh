@@ -5,7 +5,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 cd "$ROOT_DIR"
 
 PIXI_VERSION="0.77.0"
-PIXI_INSTALL_URL="https://pixi.sh/install.sh"
 PLATFORM_OVERRIDE="${ROS2_VISUAL_ALLOW_UNSUPPORTED_PLATFORM_FOR_CI:-0}"
 
 require_command() {
@@ -39,26 +38,12 @@ if [[ -z "$PIXI_BIN" && -x "${HOME}/.pixi/bin/pixi" ]]; then
 fi
 
 if [[ -z "$PIXI_BIN" ]]; then
-  echo "Pixi ${PIXI_VERSION} を公式installerからuser領域へ導入します。"
-  echo "Installer: ${PIXI_INSTALL_URL}"
-  pixi_installer="$(mktemp "${TMPDIR:-/tmp}/ros2-visual-starter-pixi.XXXXXX")"
-  cleanup_pixi_installer() { rm -f "$pixi_installer"; }
-  trap cleanup_pixi_installer EXIT INT TERM
-  if ! curl -fsSL --retry 3 --retry-delay 1 --proto '=https' --tlsv1.2 -o "$pixi_installer" "$PIXI_INSTALL_URL"; then
-    echo "Pixi installerをHTTPSで取得できませんでした。" >&2
-    exit 1
-  fi
-  if ! PIXI_VERSION="v${PIXI_VERSION}" PIXI_NO_PATH_UPDATE=1 bash "$pixi_installer"; then
-    echo "Pixi installerの実行に失敗しました。" >&2
-    exit 1
-  fi
-  trap - EXIT INT TERM
-  rm -f "$pixi_installer"
+  "$ROOT_DIR/scripts/bootstrap_pixi.sh"
   PIXI_BIN="${HOME}/.pixi/bin/pixi"
 fi
 
 if [[ ! -x "$PIXI_BIN" ]]; then
-  echo "Pixiを利用できません。installerの出力を確認してください。" >&2
+  echo "Pixiを利用できません。bootstrapの出力を確認してください。" >&2
   exit 1
 fi
 

@@ -177,3 +177,5 @@ git diff --check
 ```
 
 実行できなかった検証は成功扱いにせず、理由と影響範囲をPull Requestへ記載してください。
+
+GitHub側の保護と定期監視は[Repository Security Settings](REPOSITORY_SECURITY_SETTINGS.md)を参照してください。

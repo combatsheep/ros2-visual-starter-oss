@@ -25,12 +25,11 @@ jobs:
           node-version: 22.23.2
           cache: npm
 
-      - name: Set up Pixi
-        uses: prefix-dev/setup-pixi@28eb668aafebd9dede9d97c4ba1cd9989a4d0004 # v0.9.2
-        with:
-          pixi-version: v0.77.0
-          cache: true
-          locked: true
+      - name: Set up verified Pixi
+        run: |
+          ./scripts/bootstrap_pixi.sh
+          echo "$HOME/.pixi/bin" >> "$GITHUB_PATH"
+          "$HOME/.pixi/bin/pixi" install --locked
 
       - name: Public release audit
         run: make public-audit
@@ -44,9 +43,6 @@ jobs:
           npm run lint
           npm test
           npm run build
-
-      - name: Install locked ROS environment
-        run: pixi install --locked
 
       - name: Backend tests
         run: pixi run test-backend
