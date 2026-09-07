@@ -24,7 +24,7 @@ export interface RuntimeManagerState {
 
 export type RuntimeLifecycle =
   | { status: 'stable'; mode: RuntimeMode }
-  | { status: 'switching'; mode: RuntimeMode; target: RuntimeMode; phase: 'processing' | 'closing' }
+  | { status: 'switching'; mode: RuntimeMode; target: RuntimeMode; phase: string }
   | { status: 'error'; mode: RuntimeMode; target: RuntimeMode; message: string };
 
 export type MapReadiness =
@@ -311,6 +311,7 @@ export interface TransitionResult {
 }
 
 export interface ProcessingModalModel {
+  progress: number;
   title: string;
   detail: string;
   status: string;
@@ -704,7 +705,35 @@ export function canAcceptManualMotion(state: AppState): boolean {
     && !isInteractionLocked(state);
 }
 
+// Percentages represent completed startup milestones, never elapsed-time estimates.
+export function startupProgress(state: AppState): number {
+  if (state.runtime.status === 'error' || state.map.status === 'error') return 0;
+  if (state.runtime.status === 'switching') {
+    const phases: Record<string, number> = { processing: 0, closing: 0, stopping: 10, launching: 20, rosbridge: 30, rosapi: 40, mapping: 50 };
+    return phases[state.runtime.phase] ?? 0;
+  }
+  if (state.map.status === 'resetting') return 20;
+  if (state.transport !== 'CONNECTED' && currentRuntimeMode(state) !== 'sim') return 60;
+  if (state.map.status === 'initializing') {
+    return 70 + (state.map.mapReceived ? 10 : 0) + (state.map.poseReceived ? 10 : 0);
+  }
+  return 100;
+}
+
 export function processingModalModel(state: AppState): ProcessingModalModel | null {
+  const model = processingModalContent(state);
+  if (!model) return null;
+  const phaseLabels: Record<string, string> = {
+    processing: '起動処理を開始しています…', stopping: '既存のROS2構成を安全に停止しています…',
+    launching: 'ROS2・MAP・NAV2のプロセスを起動しています…', rosbridge: 'rosbridgeの起動を待っています…',
+    rosapi: 'ROS2のサービスを確認しています…', mapping: 'SLAM ToolboxとMap Saverを初期化しています…',
+  };
+  return { ...model, progress: startupProgress(state),
+    ...(state.runtime.status === 'switching' && state.runtime.target !== 'sim'
+      ? { status: phaseLabels[state.runtime.phase] ?? model.status } : {}) };
+}
+
+function processingModalContent(state: AppState): Omit<ProcessingModalModel, 'progress'> | null {
   if (!isInteractionLocked(state)) return null;
   const waitingForTransport = state.transport === 'CONNECTING'
     || state.transport === 'RECONNECTING'
@@ -727,8 +756,8 @@ export function processingModalModel(state: AppState): ProcessingModalModel | nu
     }
     if (state.map.target === 'exploration') {
       return {
-        title: '探索構成初期化中',
-        detail: 'SLAM Toolboxのlive map・同期pose・Nav2 Actionを準備しています。',
+        title: 'ROS2起動中',
+        detail: 'ROS2・MAP・NAV2をまとめて起動し、探索を開始できる状態に準備しています。',
         status: state.runtime.status === 'switching'
           ? 'ROS backendを探索構成へ切り替えています…'
           : !state.map.mapReceived
@@ -1726,10 +1755,11 @@ function transitionAppStateCore(state: AppState, event: AppEvent): TransitionRes
       if (!isRuntimeMode(snapshot.mode) || !isRuntimeMode(snapshot.target)) return rejected(state);
       if (snapshot.processing) {
         if (state.runtime.status === 'switching' && state.runtime.target === snapshot.target) {
-          const phase = snapshot.phase === 'closing' || snapshot.target === 'sim' ? 'closing' : 'processing';
+          const phase = snapshot.target === 'sim' ? 'closing' : snapshot.phase || 'processing';
           return accepted({ ...state, runtime: { status: 'switching', mode: state.runtime.mode, target: state.runtime.target, phase } });
         }
         const next = runtimeSwitchState(state, snapshot.target);
+        if (next.runtime.status === 'switching') next.runtime.phase = snapshot.phase || next.runtime.phase;
         const effects = stoppedEffects('runtime');
         if (state.view.mode === 'stage') effects.push({ type: 'EXIT_STAGE' });
         if (snapshot.target === 'navigation' && currentRuntimeMode(state) !== 'navigation') effects.push({ type: 'RESET_NAVIGATION_ORIGIN' });

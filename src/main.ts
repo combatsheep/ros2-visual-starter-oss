@@ -117,7 +117,7 @@ async function start(): Promise<void> {
       await switchableTransport.setActive(ros);
       syncSimulationOwnership();
       rosTransportActive = true;
-      ui.showNarration('ROS2へ接続しました。上部のROS2・MAP・NAV2と地図パネルの探索状態で起動構成を確認できます。');
+      ui.showNarration('ROS2へ接続しました。上部のROS2ボタンと地図パネルの探索状態で起動構成を確認できます。');
     } catch (error) {
       console.warn('rosbridge connection failed; remaining in SIM mode', error);
       await switchableTransport.setActive(local);
@@ -161,7 +161,7 @@ async function start(): Promise<void> {
       }
       const runtimeLabel = mode === 'base' ? 'ROS2' : mode === 'mapping' ? 'MAP' : mode === 'navigation' ? 'NAV2' : mode === 'exploration' ? '探索構成' : 'SIM';
       ui.showNarration(mode === 'sim' ? 'ROS2構成を安全に終了しています。' : `${runtimeLabel}を起動しています。完了まで操作ボタンをロックします。`);
-      for (let attempt = 0; attempt < 180; attempt += 1) {
+      for (let attempt = 0; attempt < 1200; attempt += 1) {
         await new Promise((resolve) => window.setTimeout(resolve, 250));
         const state = await refreshRuntime();
         if (!state || state.processing) continue;

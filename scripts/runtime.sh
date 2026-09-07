@@ -138,6 +138,7 @@ if [[ "$MODE" == "exploration" && -n "$MAP_PATH" ]]; then
   exit 2
 fi
 
+printf 'stopping\n' > .logs/runtime_processing
 if ! stop_backend 1; then
   write_error "9090番portを安全に確保できません。別processのlistenerまたは不完全な台帳を確認してください。"
   exit 1
@@ -164,6 +165,7 @@ run_ros_without_llm_environment() {
     "${environment[@]}" "$@"
 }
 rm -f .logs/ros_backend.pid .logs/ros_backend.pgid .logs/ros_backend.token .logs/ros_backend.session_ready .logs/ros_bootstrap.pid .logs/ros_bootstrap.owner .logs/ros_bootstrap.token
+printf 'launching\n' > .logs/runtime_processing
 bootstrap_token="$("$PIXI_PYTHON" -c 'import secrets; print(secrets.token_hex(16))')"
 printf '%s\n' "$$" > .logs/ros_bootstrap.owner
 printf '%s\n' "$bootstrap_token" > .logs/ros_bootstrap.token
@@ -208,6 +210,7 @@ if [[ "$identity_ready" != "1" ]]; then
   exit 1
 fi
 
+printf 'rosbridge\n' > .logs/runtime_processing
 rosbridge_ready=0
 for _ in {1..75}; do
   if ! process_is_running "$backend_pid"; then
@@ -238,6 +241,7 @@ fi
 # rosbridgeのportだけでFrontendを開くと、初回起動ではrosapi serviceの
 # advertise前にBrowserがgraph取得を始め、空graphを構成異常と誤認する。
 # 必須serviceが見えるまで待ってからruntimeをreadyとして公開する。
+printf 'rosapi\n' > .logs/runtime_processing
 rosapi_ready=0
 for _ in {1..15}; do
   if ! process_is_running "$backend_pid"; then break; fi
@@ -254,6 +258,7 @@ done
 
 managed_mapping_ready=1
 if [[ "$rosapi_ready" == "1" && ("$MODE" == "mapping" || "$MODE" == "exploration") ]]; then
+  printf 'mapping\n' > .logs/runtime_processing
   managed_mapping_ready=0
   # Browserを先に公開すると、初回のrosapi graph照会がSLAM／Map Saverの
   # Lifecycle serviceと競合し、change_state timeout後に初期化モーダルが
