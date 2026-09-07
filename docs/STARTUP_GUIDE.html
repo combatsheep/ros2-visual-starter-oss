@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,"><title>ROS2 Visual Starter 起動ガイド</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f4ed;color:#173536;font:16px/1.8 system-ui,sans-serif}main{max-width:860px;margin:auto;padding:32px 20px}h1{font-size:clamp(1.7rem,5vw,2.7rem);line-height:1.3}section{margin:24px 0;padding:24px;background:#fff;border:1px solid #dce6df;border-radius:16px}h2{margin-top:0;font-size:1.3rem}pre{padding:16px;background:#173536;color:#d9f4ec;border-radius:8px;overflow:auto}code{overflow-wrap:anywhere}a{color:#0b7168}li{margin:12px 0}dl{margin:0}dt{font-weight:700;color:#0b7168}dd{margin:0 0 16px}small{color:#536b65}
+</style>
+</head>
+<body><main>
+<small>ROS2 VISUAL STARTER / 起動ガイド</small>
+<h1>ROS2ボタン1つで、探索の準備まで</h1>
+<section><h2>1. SIM画面を開く</h2>
+<p>セットアップ済みのプロジェクトフォルダで実行します。初回は先に <code>./setup.sh</code> を実行してください。</p>
+<pre>./run.sh --sim</pre>
+<p>ブラウザが開かない場合は <a href="http://127.0.0.1:27182/">http://127.0.0.1:27182/</a> を開きます。SIMだけならROS 2やLocal LLMを起動せずに学習できます。</p></section>
+<section><h2>2. ROS2を押して準備する</h2>
+<ol><li>ヘッダーの <strong>ROS2 deactivated</strong> を1回押します。MAP・NAV2の個別起動ボタンはありません。</li>
+<li>「ROS2起動中」の待機モーダルに、全体の進捗％と現在の工程が表示されます。準備中は自機操作や探索開始がロックされます。</li>
+<li>モーダルが閉じ、地図パネルに「準備完了です」と表示されて「探索開始」が有効になるまで待ちます。</li>
+<li><strong>探索開始</strong>を押すと、地図を広げる探索走行が始まります。準備だけでは探索走行は始まりません。</li></ol>
+<p>ROS2・SLAM Toolboxによる新しい地図の生成・NAV2を、探索構成としてまとめて起動します。地図、同期した自機位置、Nav2 Actionと必須Nodeの準備を確認してから操作を解放します。</p></section>
+<section><h2>進捗％の意味</h2><p>完了した工程に割り当てた割合で、残り時間の予測ではありません。同じ％のまま工程の準備が続く場合があります。</p>
+<dl><dt>0〜20%</dt><dd>起動要求、既存構成の安全な停止、プロセス起動</dd>
+<dt>30〜50%</dt><dd>rosbridge起動、ROS2サービス確認、SLAM ToolboxとMap Saverの初期化</dd>
+<dt>60%</dt><dd>バックエンドの準備が終わり、ブラウザからROS2へ接続</dd>
+<dt>70〜90%</dt><dd>新しい地図と同期した自機位置を受信し、NAV2の準備を確認</dd>
+<dt>完了</dt><dd>内部の進捗が100%になるとモーダルが閉じ、探索開始が有効になります。</dd></dl>
+<p><code>./run.sh --exploration</code> で直接起動することもできます。起動の最初からモーダルを確認する場合は、SIM起動後にROS2ボタンを押してください。</p></section>
+<section><h2>停止と、起動できない場合</h2>
+<p><strong>ROS2 activated</strong> を押すとROS2構成を停止し、SIMへ戻ります。アプリ全体を終了する場合は「アプリ終了」、または次を実行します。</p><pre>./stop.sh</pre>
+<p>別のプロジェクト版が起動中の場合は、その版を終了してから起動してください。起動エラーは画面の日本語メッセージを確認し、必要に応じてログを調べます。</p><pre>cat .logs/runtime_error
+tail -n 80 .logs/ros_backend.log</pre>
+<p>「この端末で操作」が表示された場合は、操作権を取得してから続けてください。保存地図を使う固定地図navigationなどのコマンドは <a href="../README.md">README</a>、詳しい対処は <a href="TROUBLESHOOTING.md">トラブルシューティング</a>を参照してください。</p></section>
+</main></body></html>

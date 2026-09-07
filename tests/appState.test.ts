@@ -19,6 +19,7 @@ import {
   isInteractionLocked,
   mapSaveUnavailableReason,
   processingModalModel,
+  startupProgress,
   transitionAppState,
   type AppEvent,
   type AppState,
@@ -211,6 +212,42 @@ describe('application state transitions', () => {
     const stale = transitionAppState(state, { type: 'RUNTIME_MANAGER_OBSERVED', snapshot: runtimeSnapshot('sim') });
     expect(stale.accepted).toBe(false);
     expect(stale.state.runtime).toEqual({ status: 'switching', mode: 'sim', target: 'navigation', phase: 'processing' });
+  });
+
+  it('tracks combined startup milestones and keeps exploration idle until explicitly started', () => {
+    let state = dispatch(createInitialAppState(), { type: 'RUNTIME_SWITCH_REQUESTED', target: 'exploration' });
+    expect(processingModalModel(state)).toMatchObject({ title: 'ROS2起動中', progress: 0 });
+    for (const [phase, progress] of [['stopping', 10], ['launching', 20], ['rosbridge', 30], ['rosapi', 40], ['mapping', 50]] as const) {
+      state = dispatch(state, { type: 'RUNTIME_MANAGER_OBSERVED', snapshot: runtimeSnapshot('sim', { target: 'exploration', processing: true, phase }) });
+      expect(processingModalModel(state)?.progress).toBe(progress);
+      expect(canStartExploration(state, freshness(1))).toBe(false);
+    }
+    state = dispatch(state, { type: 'RUNTIME_MANAGER_OBSERVED', snapshot: runtimeSnapshot('exploration') });
+    expect(processingModalModel(state)?.progress).toBe(60);
+    state = dispatch(state, { type: 'TRANSPORT_CHANGED', connection: 'CONNECTED' });
+    expect(processingModalModel(state)?.progress).toBe(70);
+    state = receiveMap(state);
+    state = observeExplorationMap(state, 1);
+    expect(processingModalModel(state)?.progress).toBe(80);
+    state = receivePose(state);
+    state = observeExplorationPose(state);
+    expect(processingModalModel(state)?.progress).toBe(90);
+    expect(canStartExploration(state, freshness(1))).toBe(false);
+    state = dispatch(state, { type: 'NAVIGATION_READY', cycle: state.map.cycle });
+    expect(startupProgress(state)).toBe(100);
+    expect(processingModalModel(state)).toBeNull();
+    expect(canStartExploration(state, freshness(1))).toBe(true);
+    expect(state.exploration.status).toBe('idle');
+  });
+
+  it('does not show completion after a combined startup failure and permits retry', () => {
+    let state = dispatch(createInitialAppState(), { type: 'RUNTIME_SWITCH_REQUESTED', target: 'exploration' });
+    state = dispatch(state, { type: 'RUNTIME_MANAGER_OBSERVED', snapshot: runtimeSnapshot('sim', { target: 'exploration', error: 'startup failed' }) });
+    expect(startupProgress(state)).toBe(0);
+    expect(processingModalModel(state)).toBeNull();
+    expect(canStartExploration(state, freshness(1))).toBe(false);
+    state = dispatch(state, { type: 'RUNTIME_SWITCH_REQUESTED', target: 'exploration' });
+    expect(processingModalModel(state)?.progress).toBe(0);
   });
 
   it('keeps navigation locked until runtime, connection, map, and pose are all ready', () => {
@@ -546,7 +583,7 @@ describe('application state transitions', () => {
   it('requires live map, SLAM pose, and Nav2 readiness before exploration starts', () => {
     let state = createInitialAppState();
     state = dispatch(state, { type: 'RUNTIME_SWITCH_REQUESTED', target: 'exploration' });
-    expect(processingModalModel(state)?.title).toBe('探索構成初期化中');
+    expect(processingModalModel(state)?.title).toBe('ROS2起動中');
     state = dispatch(state, { type: 'RUNTIME_MANAGER_OBSERVED', snapshot: runtimeSnapshot('exploration') });
     state = dispatch(state, { type: 'TRANSPORT_CHANGED', connection: 'CONNECTED' });
     state = receiveMap(state);

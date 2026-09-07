@@ -30,8 +30,6 @@
         </div>
         <div class="topbar-right">
           <div class="topbar-actions">
-            <button id="map-runtime-toggle" class="runtime-button runtime-map deactivated" type="button">MAP deactivated</button>
-            <button id="nav-runtime-toggle" class="runtime-button runtime-nav deactivated" type="button">NAV2 deactivated</button>
             <button id="connection-status" class="runtime-button runtime-ros deactivated" type="button"><span class="status-dot"></span><span>ROS2 deactivated</span></button>
             <button id="theme-toggle" class="button button-outline theme-toggle" type="button" aria-pressed="true" title="ライトモードへ切り替え">☀️ ライト</button>
             <button id="app-exit-button" class="app-exit-button" type="button" title="フロントとROS 2を終了">アプリ終了</button>
@@ -60,8 +58,10 @@
           <p class="eyebrow">ROS2 VISUAL STARTER / INITIALIZING</p>
           <h2 id="processing-modal-title">MAP初期化中</h2>
           <p id="processing-modal-detail">地図と自機の同期を準備しています。</p>
+          <label id="processing-progress-label" for="processing-progress">全体の進捗 0%</label>
+          <progress id="processing-progress" max="100" value="0" aria-labelledby="processing-progress-label"></progress>
           <div class="processing-status"><span class="live-dot"></span><strong id="processing-modal-status">mapの準備完了を待っています…</strong></div>
-          <small>準備が完了するまで、自機の操作をロックしています。</small>
+          <small>進捗は各準備工程の完了状況を表します。準備完了まで自機の操作をロックしています。</small>
         </div>
       </div>
 
@@ -139,7 +139,7 @@
             <p id="navigation-guide" class="panel-note">固定地図navigationと、成長中の地図からfrontierを選ぶexplorationを安全に切り替えます。</p>
             <div class="map-shell">
               <canvas id="map-canvas" width="720" height="480" aria-label="ROS OccupancyGrid、探索優先候補、現在位置、目標、経路"></canvas>
-              <div id="map-empty" class="map-empty">SIMモードでは/mapを使いません<br /><small>地図作成は ./start.sh --mapping で開始します</small></div>
+              <div id="map-empty" class="map-empty">SIMモードでは/mapを使いません<br /><small>上部のROS2ボタンで地図生成と探索を準備します</small></div>
             </div>
             <div class="map-legend" aria-label="地図の凡例">
               <span><i class="legend-cell occupied"></i>壁・障害物</span><span><i class="legend-cell free"></i>走れる場所</span><span><i class="legend-cell frontier"></i>frontier</span><span><i class="legend-dot candidate"></i>優先候補</span><span><i class="legend-dot selected"></i>選択goal</span><span><i class="legend-dot unreachable"></i>到達／余白NG</span><span><i class="legend-dot blacklisted"></i>blacklist</span><span><i class="legend-dot scan"></i>現在LiDAR</span><span><i class="legend-dot robot"></i>現在位置</span><span><i class="legend-line global"></i>Global経路</span><span><i class="legend-line local"></i>Local経路</span>

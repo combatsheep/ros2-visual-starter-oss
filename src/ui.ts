@@ -907,6 +907,8 @@ export class LearningUI {
       this.processingModalTitle.textContent = modal.title;
       this.processingModalDetail.textContent = modal.detail;
       this.processingModalStatus.textContent = modal.status;
+      this.find<HTMLProgressElement>('#processing-progress').value = modal.progress;
+      this.find('#processing-progress-label').textContent = `全体の進捗 ${modal.progress}%`;
     }
   }
 
@@ -1714,9 +1716,7 @@ export class LearningUI {
 
   bindRuntimeControls(requestMode: (mode: RuntimeMode) => Promise<boolean>): void {
     this.requestRuntimeMode = requestMode;
-    this.find<HTMLButtonElement>('#connection-status').addEventListener('click', () => this.dispatchAppEvent({ type: 'RUNTIME_SWITCH_REQUESTED', target: this.runtimeManagerState.mode === 'sim' ? 'base' : 'sim' }));
-    this.find<HTMLButtonElement>('#map-runtime-toggle').addEventListener('click', () => this.dispatchAppEvent({ type: 'RUNTIME_SWITCH_REQUESTED', target: this.runtimeManagerState.mode === 'mapping' || this.runtimeManagerState.mode === 'navigation' || this.runtimeManagerState.mode === 'exploration' ? 'base' : 'mapping' }));
-    this.find<HTMLButtonElement>('#nav-runtime-toggle').addEventListener('click', () => this.dispatchAppEvent({ type: 'RUNTIME_SWITCH_REQUESTED', target: this.runtimeManagerState.mode === 'navigation' || this.runtimeManagerState.mode === 'exploration' ? 'mapping' : 'navigation' }));
+    this.find<HTMLButtonElement>('#connection-status').addEventListener('click', () => this.dispatchAppEvent({ type: 'RUNTIME_SWITCH_REQUESTED', target: this.runtimeManagerState.mode === 'sim' ? 'exploration' : 'sim' }));
   }
 
   bindAppExit(requestShutdown: () => Promise<boolean>): void {
@@ -1748,8 +1748,6 @@ export class LearningUI {
     const readOnly = state.mode !== 'sim' && !this.controlLeaseOwner;
     const processingLabel = state.phase === 'closing' || state.target === 'sim' ? 'CLOSING…' : 'PROCESSING…';
     const rosActive = state.mode !== 'sim' && this.connectionState === 'CONNECTED';
-    const mapActive = state.mode === 'mapping' || state.mode === 'navigation' || state.mode === 'exploration';
-    const navActive = state.mode === 'navigation' || state.mode === 'exploration';
     const apply = (button: HTMLButtonElement, active: boolean, label: string): void => {
       button.disabled = switching || readOnly;
       button.classList.toggle('activated', active);
@@ -1758,8 +1756,6 @@ export class LearningUI {
       button.textContent = switching ? processingLabel : `${label} ${active ? 'activated' : 'deactivated'}`;
       button.setAttribute('aria-pressed', String(active));
     };
-    apply(this.find<HTMLButtonElement>('#map-runtime-toggle'), mapActive, 'MAP');
-    apply(this.find<HTMLButtonElement>('#nav-runtime-toggle'), navActive, 'NAV2');
     const rosButton = this.find<HTMLButtonElement>('#connection-status');
     apply(rosButton, rosActive, 'ROS2');
     if (!switching) {
@@ -4027,7 +4023,7 @@ export class LearningUI {
           ? 'SLAM Toolboxのlive mapからfrontierを抽出し、既知free側の安全なgoalをNav2へ順次送ります。'
         : this.runtimeMode === 'base'
           ? 'base ROSではSafety・TF・Topic疎通を学べます。地図は --mapping、目標走行は --navigation で起動します。'
-          : 'SIMはROS 2なしで動きます。地図を作るときは ./start.sh --mapping で起動してください。';
+          : '上部のROS2ボタンを押すと、地図生成とNAV2を起動して探索を準備します。';
     if (this.runtimeMode === 'sim') this.occupancyMap = null;
     if (!this.occupancyMap) this.updateMapEmptyMessage();
     this.find('#nav-status').textContent = this.runtimeIdleStatus();
@@ -4130,7 +4126,7 @@ export class LearningUI {
 
   private updateMapEmptyMessage(): void {
     const messages: Record<RuntimeMode, [string, string]> = {
-      sim: ['SIMモードでは/mapを使いません', '地図作成は ./start.sh --mapping で開始します'],
+      sim: ['SIMモードでは/mapを使いません', '上部のROS2ボタンで地図生成と探索を準備します'],
       base: ['ROS BASEは接続済みです', 'このモードは/mapを配信しません。./start.sh --mapping で切り替えます'],
       mapping: ['/mapを作成しています', 'WASDで部屋を見渡しながら数秒待ってください'],
       navigation: ['保存地図を読み込んでいます', 'Map ServerとAMCLの起動完了まで数秒待ってください'],
