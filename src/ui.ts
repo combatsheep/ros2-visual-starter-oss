@@ -1,3 +1,4 @@
+import { OnboardingTips } from './onboarding';
 import { applyPlanarTransform, closestStamped, createMapViewport, laserHitToWorld, makePose, navigationTransformFreshness, quaternionToYaw, robotMarkerDimensionsForViewport, selectMappingPose, transformOdomPoseToMap, viewportCanvasToWorld, worldToViewportCanvas, type MapViewport } from './navigationMap';
 import { appPath } from './appPaths';
 import { clonePlayground, createPlaygroundLibrary, DEFAULT_PLAYGROUND, getVisionTargetAssetById, getVisionTargetAssetByUrl, parsePlayground, parsePlaygroundLibrary, PLAYGROUND_LIBRARY_STORAGE_KEY, PLAYGROUND_STAGE_PRESETS, PLAYGROUND_STORAGE_KEY, PlaygroundHistory, snapToGrid, upsertPlaygroundLibrary, validateRobotClearance, VISION_TARGET_ASSETS, type PlaygroundDefinition, type PlaygroundObject, type PlaygroundObjectKind, type PlaygroundStageSize, type VisionTargetAssetId } from './playground';
@@ -207,6 +208,7 @@ interface StageGesture {
   startPointerAngle: number;
   startRotation: number;
   startClientY: number;
+  startHeight: number;
   lastX: number;
   lastZ: number;
   lastRotation: number;
@@ -369,6 +371,8 @@ export class LearningUI {
   private tabletControlDockVisible = !readTabletControlDockHidden();
   private tabletControlDockPosition = readTabletControlDockPosition();
 
+  private onboarding?: OnboardingTips;
+
   constructor(root: HTMLElement, canvas: HTMLCanvasElement) {
     this.root = root;
     this.canvas = canvas;
@@ -423,6 +427,14 @@ export class LearningUI {
     void this.refreshLocalLlmStatus();
     window.setInterval(() => void this.refreshLocalLlmStatus(), 5_000);
     void this.hydrateUploadedStageImages();
+    this.onboarding = new OnboardingTips(root, () => ({
+      blocked: this.activeView !== 'sim' || this.isInteractionLocked()
+        || !this.processingModal.hidden || !this.stageImageErrorModal.hidden,
+      sim: this.runtimeMode === 'sim',
+      explorationReady: !this.find<HTMLButtonElement>('#start-exploration-button').disabled,
+      manual: this.hasRuntimeControl() && canAcceptManualMotion(this.appState),
+      idle: !explorationIsActive(this.appState.exploration) && this.appState.exploration.status !== 'paused',
+    }));
   }
 
   private find<T extends HTMLElement = HTMLElement>(selector: string): T { const element = this.root.querySelector<T>(selector); if (!element) throw new Error(`UI element not found: ${selector}`); return element; }
@@ -3144,6 +3156,7 @@ export class LearningUI {
       startPointerAngle,
       startRotation: object.rotation,
       startClientY: clientY ?? 0,
+      startHeight: object.size.height,
       lastX: object.position.x,
       lastZ: object.position.z,
       lastRotation: object.rotation,
@@ -3194,7 +3207,7 @@ export class LearningUI {
       gesture.lastZ = point.z;
     } else if (gesture.kind === 'resizeHeight') {
       const totalDy = event.clientY - gesture.startClientY;
-      const nextHeight = gesture.lastHeight + this.simulation.screenDeltaToHeightDelta(totalDy);
+      const nextHeight = gesture.startHeight + this.simulation.screenDeltaToHeightDelta(totalDy);
       gesture.lastHeight = clampRange(this.snapped(nextHeight, .05), .1, 3);
     } else {
       const angle = Math.atan2(ground.z - gesture.centerZ, ground.x - gesture.centerX);
@@ -3784,6 +3797,7 @@ export class LearningUI {
     });
     this.find<HTMLButtonElement>('#start-exploration-button').addEventListener('click', () => {
       if (this.dispatchAppEvent({ type: 'EXPLORATION_START_REQUESTED', mapGeneration: this.explorationMapGeneration, requestedAtMs: Date.now() })) {
+        this.onboarding?.recordExplorationStart();
         this.explorationLastReason = '探索を開始しました。fresh mapのfrontierを評価します。';
         this.renderExplorationControls();
       }

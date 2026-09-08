@@ -14,6 +14,7 @@ def test_nav2_uses_real_robot_footprint_and_bounded_progress_timeout() -> None:
     assert controller["progress_checker"]["movement_time_allowance"] == 5.0
     for costmap_name in ("local_costmap", "global_costmap"):
         costmap = config[costmap_name][costmap_name]["ros__parameters"]
+        assert costmap["footprint"] == "[[0.16, 0.20], [0.16, -0.20], [-0.16, -0.20], [-0.16, 0.20]]"
         assert costmap["footprint_padding"] == 0.02
         assert "robot_radius" not in costmap
         assert costmap["inflation_layer"]["inflation_radius"] == 0.40

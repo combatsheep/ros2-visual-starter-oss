@@ -797,3 +797,35 @@ kbd { display: inline-grid; min-width: 1.4rem; height: 1.4rem; place-items: cent
 #processing-progress::-webkit-progress-value { background: var(--teal); transition: width .3s ease; }
 #processing-progress::-moz-progress-bar { background: var(--teal); }
 :root[data-theme="dark"] .processing-status { color: #8be3c2; }
+
+/* Contextual, non-modal onboarding. Keep the indicated control clickable. */
+.onboarding-tip {
+  position: fixed;
+  z-index: 90;
+  box-sizing: border-box;
+  width: min(330px, calc(100vw - 16px));
+  padding: 17px;
+  border: 1px solid #66d9f5;
+  border-radius: 14px;
+  background: #122c40;
+  color: #f3fbff;
+  box-shadow: 0 8px 28px #0005;
+}
+.onboarding-tip[hidden] { display: none; }
+.onboarding-tip::before {
+  content: '';
+  position: absolute;
+  left: var(--tip-arrow-left);
+  width: 12px;
+  height: 12px;
+  background: #122c40;
+  transform: translateX(-50%) rotate(45deg);
+}
+.onboarding-tip[data-side='below']::before { top: -7px; border-left: 1px solid #66d9f5; border-top: 1px solid #66d9f5; }
+.onboarding-tip[data-side='above']::before { bottom: -7px; border-right: 1px solid #66d9f5; border-bottom: 1px solid #66d9f5; }
+.onboarding-tip p { margin: 0 0 15px; font-size: 14px; line-height: 1.7; }
+.onboarding-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.onboarding-actions label { display: flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; }
+.onboarding-actions input { width: 17px; height: 17px; accent-color: #65d9f5; }
+.onboarding-actions button { min-width: 52px; min-height: 40px; border: 0; border-radius: 8px; background: #8ce5fa; color: #102839; font-weight: 700; cursor: pointer; }
+.onboarding-tip :focus-visible { outline: 3px solid #fff; outline-offset: 3px; }

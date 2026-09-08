@@ -220,6 +220,15 @@ mediaはBrowser内へ保存され、serverへuploadされません。
 
 `stop.sh`は`.logs/`へ記録された本repository所有processだけを対象にします。終了後もportが残る場合は`lsof`で所有processを確認し、無関係なROS 2 processを停止しないでください。
 
+起動中に進捗が50%（SLAM ToolboxとMap Saverの初期化）で止まり、Ctrl+C後に再起動できない場合は、ROS CLIの子processがruntime lockを保持したまま孤児化している可能性があります。別Terminalでまず次を実行してください。
+
+```bash
+./stop.sh
+./run.sh --sim
+```
+
+`stop.sh`はruntime lockの所有PIDと作業ディレクトリを確認し、このrepositoryの起動処理だけを回収します。所有を確認できないprocessは停止しません。`.logs/ros_backend.log`には起動失敗の最後のログが残ります。
+
 runtimeの状態は次で確認できます。
 
 ```bash

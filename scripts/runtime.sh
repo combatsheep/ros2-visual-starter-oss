@@ -66,6 +66,7 @@ if ! acquire_owned_lock "$LOCK_DIR" 2400 "ROS切替処理" 8; then
   write_error "別のROS切替処理が進行中です。完了を待ってから再実行してください。"
   exit 1
 fi
+printf '%s\n' "$$" > .logs/runtime_operation.pid
 cleanup_runtime() {
   local status="$?"
   trap - EXIT INT TERM
@@ -78,7 +79,7 @@ cleanup_runtime() {
     && ("$backend_replaced" == "1" || "$launched_backend" == "1") ]]; then
     printf 'sim\n' > .logs/runtime_mode
   fi
-  rm -f .logs/runtime_processing .logs/runtime_target
+  rm -f .logs/runtime_operation.pid .logs/runtime_processing .logs/runtime_target
   release_owned_lock "$LOCK_DIR" 8
   return "$status"
 }
@@ -144,7 +145,7 @@ if ! stop_backend 1; then
   exit 1
 fi
 backend_replaced=1
-environment=("ROS_LOCALHOST_ONLY=1" "RMW_IMPLEMENTATION=rmw_fastrtps_cpp" "FASTDDS_BUILTIN_TRANSPORTS=UDPv4")
+environment=("ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST" "ROS_LOCALHOST_ONLY=1" "RMW_IMPLEMENTATION=rmw_fastrtps_cpp" "FASTDDS_BUILTIN_TRANSPORTS=UDPv4")
 if [[ -n "$MAP_PATH" ]]; then environment+=("ROS2_VISUAL_MAP=$MAP_PATH"); fi
 run_ros_without_llm_environment() {
   env \
@@ -163,6 +164,11 @@ run_ros_without_llm_environment() {
     -u ROS2_VISUAL_LLM_MODEL \
     -u ROS2_VISUAL_LLM_ENABLED \
     "${environment[@]}" "$@"
+}
+run_bounded_ros_command() {
+  local timeout_seconds="$1"
+  shift
+  run_ros_without_llm_environment "$PIXI_PYTHON" "$ROOT_DIR/scripts/run_bounded.py" "$timeout_seconds" "$@"
 }
 rm -f .logs/ros_backend.pid .logs/ros_backend.pgid .logs/ros_backend.token .logs/ros_backend.session_ready .logs/ros_bootstrap.pid .logs/ros_bootstrap.owner .logs/ros_bootstrap.token
 printf 'launching\n' > .logs/runtime_processing
@@ -245,7 +251,7 @@ printf 'rosapi\n' > .logs/runtime_processing
 rosapi_ready=0
 for _ in {1..15}; do
   if ! process_is_running "$backend_pid"; then break; fi
-  service_list="$(run_ros_without_llm_environment "$PIXI_BIN" run ros2 service list --no-daemon --spin-time 1 2>/dev/null || true)"
+  service_list="$(run_bounded_ros_command 3 "$ROOT_DIR/.pixi/envs/default/bin/ros2" service list --no-daemon --spin-time 1 2>/dev/null || true)"
   padded_services=$'\n'"$service_list"$'\n'
   if [[ "$padded_services" == *$'\n/rosapi/nodes\n'* \
     && "$padded_services" == *$'\n/rosapi/topics\n'* \
@@ -266,9 +272,9 @@ if [[ "$rosapi_ready" == "1" && ("$MODE" == "mapping" || "$MODE" == "exploration
   # mapping側のmanaged bringup完了を確認してからruntimeを公開する。
   for _ in {1..30}; do
     if ! process_is_running "$backend_pid"; then break; fi
-    slam_state="$(run_ros_without_llm_environment "$PIXI_BIN" run ros2 lifecycle get --no-daemon --spin-time 0.5 /slam_toolbox 2>/dev/null || true)"
+    slam_state="$(run_bounded_ros_command 3 "$ROOT_DIR/.pixi/envs/default/bin/ros2" lifecycle get --no-daemon --spin-time 0.5 /slam_toolbox 2>/dev/null || true)"
     if [[ "$slam_state" == *'active [3]'* ]]; then
-      map_saver_state="$(run_ros_without_llm_environment "$PIXI_BIN" run ros2 lifecycle get --no-daemon --spin-time 0.5 /map_saver 2>/dev/null || true)"
+      map_saver_state="$(run_bounded_ros_command 3 "$ROOT_DIR/.pixi/envs/default/bin/ros2" lifecycle get --no-daemon --spin-time 0.5 /map_saver 2>/dev/null || true)"
       if [[ "$map_saver_state" == *'active [3]'* ]]; then
         managed_mapping_ready=1
         break

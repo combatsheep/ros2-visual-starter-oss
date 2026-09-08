@@ -20,7 +20,7 @@ export function createStarterRobotModel(): StarterRobotModel {
   group.name = 'starterRobotModel';
 
   const body = new THREE.Mesh(
-    new THREE.BoxGeometry(.42, .24, .36),
+    new THREE.BoxGeometry(ROBOT_GEOMETRY.bodyWidth, .24, ROBOT_GEOMETRY.bodyLength),
     standardMaterial(0x4f7f86, .12),
   );
   body.position.y = .01;
@@ -30,7 +30,7 @@ export function createStarterRobotModel(): StarterRobotModel {
   group.add(body);
 
   const top = new THREE.Mesh(
-    new THREE.BoxGeometry(.25, .09, .2),
+    new THREE.BoxGeometry(.21, .09, .17),
     standardMaterial(0xd8ebe7),
   );
   top.position.set(0, .175, -.015);
@@ -59,14 +59,14 @@ export function createStarterRobotModel(): StarterRobotModel {
   const wheelGeometry = new THREE.CylinderGeometry(
     ROBOT_GEOMETRY.wheelRadius,
     ROBOT_GEOMETRY.wheelRadius,
-    .07,
+    ROBOT_GEOMETRY.wheelAxleWidth,
     20,
   );
   const wheelMaterial = standardMaterial(0x27363b, .08);
   const wheels = [-1, 1].map((side, index) => {
     const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
     wheel.rotation.z = Math.PI / 2;
-    wheel.position.set(side * .245, ROBOT_GEOMETRY.wheelCenterLocalY, 0);
+    wheel.position.set(side * ROBOT_GEOMETRY.wheelCenterLocalX, ROBOT_GEOMETRY.wheelCenterLocalY, 0);
     wheel.castShadow = true;
     wheel.name = index === 0 ? 'leftWheel' : 'rightWheel';
     group.add(wheel);

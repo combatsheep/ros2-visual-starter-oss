@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decideSafeCommand, frontDistance } from '../src/safetyLogic';
+import { decideSafeCommand, DEFAULT_SAFETY_CONFIG, frontDistance } from '../src/safetyLogic';
 import { LaserScanMessage } from '../src/types';
 
 function scanWithFront(distance: number): LaserScanMessage {
@@ -16,7 +16,7 @@ describe('safety logic', () => {
   });
 
   it('stops forward motion under the stop distance but keeps turning', () => {
-    const result = decideSafeCommand({ linear: 1, angular: .5 }, scanWithFront(.33), 1000, 900, 900, false);
+    const result = decideSafeCommand({ linear: 1, angular: .5 }, scanWithFront(DEFAULT_SAFETY_CONFIG.stopDistance - .01), 1000, 900, 900, false);
     expect(result.stopped).toBe(true);
     expect(result.command.linear.x).toBe(0);
     expect(result.command.angular.z).toBe(.5);
@@ -29,9 +29,9 @@ describe('safety logic', () => {
   });
 
   it('keeps a stop until the hysteresis resume distance is reached', () => {
-    const result = decideSafeCommand({ linear: 1, angular: 0 }, scanWithFront(.38), 1000, 900, 900, true);
+    const result = decideSafeCommand({ linear: 1, angular: 0 }, scanWithFront(DEFAULT_SAFETY_CONFIG.resumeDistance - .01), 1000, 900, 900, true);
     expect(result.stopped).toBe(true);
-    const resumed = decideSafeCommand({ linear: 1, angular: 0 }, scanWithFront(.43), 1000, 900, 900, true);
+    const resumed = decideSafeCommand({ linear: 1, angular: 0 }, scanWithFront(DEFAULT_SAFETY_CONFIG.resumeDistance + .01), 1000, 900, 900, true);
     expect(resumed.stopped).toBe(false);
   });
 

@@ -1,3 +1,4 @@
+import { ROBOT_FOOTPRINT } from './robotGeometry';
 import { Header, OccupancyGridMessage, PoseMessage, PoseStampedMessage, QuaternionMessage, RosTime, TransformStampedMessage } from './types';
 
 export interface Point2 { x: number; y: number }
@@ -10,7 +11,6 @@ export interface MapViewport {
   height: number;
 }
 
-const ROBOT_FOOTPRINT = { length: 0.4, width: 0.5 } as const;
 const clamp = (value: number, minimum: number, maximum: number): number => Math.max(minimum, Math.min(maximum, value));
 
 export const EXPLORATION_NAVIGATION_TF_MAX_AGE_MS = 500;
@@ -206,15 +206,15 @@ export function viewportCanvasToWorld(map: OccupancyGridMessage, point: Point2, 
   });
 }
 
-/** Converts the 0.4m x 0.5m training-room robot footprint to readable map pixels. */
+/** Converts the shared training-room robot footprint to readable map pixels. */
 export function robotMarkerDimensions(map: OccupancyGridMessage, width: number, height: number): RobotMarkerDimensions {
   const mapWidthMeters = map.info.width * map.info.resolution;
   const mapHeightMeters = map.info.height * map.info.resolution;
   if (mapWidthMeters <= 0 || mapHeightMeters <= 0) return { length: 24, width: 30 };
   const pixelsPerMeter = Math.min(width / mapWidthMeters, height / mapHeightMeters);
   return {
-    length: clamp(ROBOT_FOOTPRINT.length * pixelsPerMeter, 24, 72),
-    width: clamp(ROBOT_FOOTPRINT.width * pixelsPerMeter, 30, 84),
+    length: clamp(ROBOT_FOOTPRINT.lengthMeters * pixelsPerMeter, 24, 72),
+    width: clamp(ROBOT_FOOTPRINT.widthMeters * pixelsPerMeter, 30, 84),
   };
 }
 
@@ -222,8 +222,8 @@ export function robotMarkerDimensions(map: OccupancyGridMessage, width: number, 
 export function robotMarkerDimensionsForViewport(map: OccupancyGridMessage, viewport: MapViewport): RobotMarkerDimensions {
   const pixelsPerMeter = viewport.scale / map.info.resolution;
   return {
-    length: clamp(ROBOT_FOOTPRINT.length * pixelsPerMeter, 24, 72),
-    width: clamp(ROBOT_FOOTPRINT.width * pixelsPerMeter, 30, 84),
+    length: clamp(ROBOT_FOOTPRINT.lengthMeters * pixelsPerMeter, 24, 72),
+    width: clamp(ROBOT_FOOTPRINT.widthMeters * pixelsPerMeter, 30, 84),
   };
 }
 
