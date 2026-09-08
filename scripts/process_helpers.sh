@@ -216,6 +216,55 @@ terminate_runtime_owner_children() {
   done
 }
 
+terminate_locked_runtime_operation() {
+  local lock_file="$1"
+  local excluded_pid="${2:-0}"
+  local owner_pid attempt pid running
+  [[ -f "$lock_file" ]] || return 0
+  kernel_lock_is_held "$lock_file" || return 0
+  owner_pid="$(<"$lock_file")"
+  if [[ ! "$owner_pid" =~ ^[1-9][0-9]*$ ]] || [[ "$owner_pid" == "$excluded_pid" ]]; then
+    echo "runtime lockの所有PIDを確認できないため停止しません: $owner_pid" >&2
+    return 1
+  fi
+  if ! process_is_running "$owner_pid"; then return 0; fi
+  if ! process_is_owned "$owner_pid" runtime_operation; then
+    echo "runtime lockを所有するprocessの所有権を確認できません: PID $owner_pid" >&2
+    return 1
+  fi
+
+  # A Ctrl+C can orphan runtime.sh while it is waiting for a ROS CLI child.
+  # The lock owner is still an exact repository-owned runtime operation, so
+  # collect only that process tree before the normal runtime stop path retries.
+  PROCESS_TREE=()
+  collect_process_tree "$owner_pid" "$excluded_pid"
+  (( ${#PROCESS_TREE[@]} > 0 )) || return 0
+  kill "${PROCESS_TREE[@]}" 2>/dev/null || true
+  for attempt in {1..25}; do
+    running=0
+    for pid in "${PROCESS_TREE[@]}"; do if process_is_running "$pid"; then running=1; fi; done
+    [[ "$running" == "0" ]] && break
+    sleep .2
+  done
+  local remaining=()
+  for pid in "${PROCESS_TREE[@]}"; do if process_is_running "$pid"; then remaining+=("$pid"); fi; done
+  if (( ${#remaining[@]} > 0 )); then
+    kill -KILL "${remaining[@]}" 2>/dev/null || true
+    for attempt in {1..10}; do
+      running=0
+      for pid in "${remaining[@]}"; do if process_is_running "$pid"; then running=1; fi; done
+      [[ "$running" == "0" ]] && break
+      sleep .1
+    done
+  fi
+  for pid in "${PROCESS_TREE[@]}"; do
+    if process_is_running "$pid"; then
+      echo "runtime lock所有processを停止できませんでした: PID $pid" >&2
+      return 1
+    fi
+  done
+}
+
 PROCESS_GROUP_MEMBERS=()
 collect_process_group() {
   local target_pgid="$1"

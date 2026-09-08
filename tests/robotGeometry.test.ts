@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { lidarWorldHeight, ROBOT_GEOMETRY, wheelGroundClearance } from '../src/robotGeometry';
+import { DEFAULT_PLAYGROUND } from '../src/playground';
+import { lidarWorldHeight, ROBOT_CIRCUMSCRIBED_RADIUS_METERS, ROBOT_FOOTPRINT, ROBOT_GEOMETRY, ROBOT_SAFE_STOP_DISTANCE_METERS, wheelGroundClearance } from '../src/robotGeometry';
 
 describe('robot geometry', () => {
+  it('keeps the reduced footprint inside the default gate opening', () => {
+    const gate = DEFAULT_PLAYGROUND.objects.find((object) => object.kind === 'gate');
+    expect(gate).toBeDefined();
+    const postWidth = Math.min(gate!.size.depth, gate!.size.width / 4);
+    const openingWidth = gate!.size.width - postWidth;
+
+    expect(ROBOT_FOOTPRINT).toEqual({ lengthMeters: .32, widthMeters: .4 });
+    expect(openingWidth).toBeGreaterThan(ROBOT_FOOTPRINT.widthMeters);
+    expect(ROBOT_SAFE_STOP_DISTANCE_METERS).toBeGreaterThan(ROBOT_CIRCUMSCRIBED_RADIUS_METERS);
+  });
+
   it('places the bottom of both wheels on the floor', () => {
     expect(wheelGroundClearance()).toBeCloseTo(0);
   });

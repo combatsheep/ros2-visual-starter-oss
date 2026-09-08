@@ -1,3 +1,5 @@
+import { ROBOT_FOOTPRINT, ROBOT_SAFE_STOP_DISTANCE_METERS } from './robotGeometry';
+
 /**
  * ROS/DOM-independent frontier extraction and goal selection for an
  * OccupancyGrid-like row-major array.
@@ -230,8 +232,8 @@ export interface MapCornerGoalCandidateInput {
   minGoalPathDistanceMeters?: number;
 }
 
-/** Robot circumscribed radius (0.32 m) plus a small map/discretization margin. */
-export const EXPLORATION_REQUIRED_CLEARANCE_METERS = .34;
+/** Robot footprint plus a small map/discretization margin. */
+export const EXPLORATION_REQUIRED_CLEARANCE_METERS = ROBOT_SAFE_STOP_DISTANCE_METERS;
 /** Avoid no-op goals inside or just beyond Nav2's 0.28 m goal tolerance. */
 export const EXPLORATION_MIN_GOAL_PATH_DISTANCE_METERS = .8;
 /** Prefer goals with enough open space to turn and replan without touching the hard Safety margin. */
@@ -250,10 +252,7 @@ export const EXPLORATION_LOCAL_GOAL_HORIZON_METERS = 3;
 export const EXPLORATION_VISITED_GOAL_RADIUS_METERS = 1;
 export const EXPLORATION_MAX_VISITED_GOALS = 32;
 
-const DEFAULT_ROBOT_FOOTPRINT: Readonly<FrontierRobotFootprint> = {
-  lengthMeters: .4,
-  widthMeters: .5,
-};
+const DEFAULT_ROBOT_FOOTPRINT: Readonly<FrontierRobotFootprint> = ROBOT_FOOTPRINT;
 
 export const DEFAULT_FRONTIER_OPTIONS: Readonly<FrontierOptions> = {
   freeOccupancyMax: 20,

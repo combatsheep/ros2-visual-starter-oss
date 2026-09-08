@@ -1,4 +1,5 @@
 import { ControlInput, LaserScanMessage, SafetyDecision, makeTwist, zeroTwist } from './types';
+import { ROBOT_SAFE_STOP_DISTANCE_METERS } from './robotGeometry';
 
 export interface SafetyConfig {
   stopDistance: number;
@@ -9,8 +10,8 @@ export interface SafetyConfig {
 }
 
 export const DEFAULT_SAFETY_CONFIG: SafetyConfig = {
-  stopDistance: 0.34,
-  resumeDistance: 0.42,
+  stopDistance: ROBOT_SAFE_STOP_DISTANCE_METERS,
+  resumeDistance: ROBOT_SAFE_STOP_DISTANCE_METERS + 0.08,
   frontAngleDeg: 15,
   scanTimeoutSec: 0.5,
   commandTimeoutSec: 0.5,

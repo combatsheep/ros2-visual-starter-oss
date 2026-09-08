@@ -1,4 +1,5 @@
 import { appPath } from './appPaths';
+import { ROBOT_SAFE_STOP_DISTANCE_METERS } from './robotGeometry';
 
 export const PLAYGROUND_SCHEMA_VERSION = 1 as const;
 export const PLAYGROUND_STORAGE_KEY = 'ros2-visual-starter-playground-v1';
@@ -210,7 +211,8 @@ export function validateRobotClearance(object: PlaygroundObject, robotX: number,
   const sine = Math.sin(-object.rotation);
   const localX = deltaX * cosine + deltaZ * sine;
   const localZ = -deltaX * sine + deltaZ * cosine;
-  if (Math.abs(localX) < object.size.width / 2 + .35 && Math.abs(localZ) < object.size.depth / 2 + .35) {
+  if (Math.abs(localX) < object.size.width / 2 + ROBOT_SAFE_STOP_DISTANCE_METERS
+    && Math.abs(localZ) < object.size.depth / 2 + ROBOT_SAFE_STOP_DISTANCE_METERS) {
     throw new Error('ロボットを物体内へ閉じ込める位置・寸法には変更できません。');
   }
 }

@@ -201,7 +201,14 @@ export class Simulation {
     const world = new RAPIER.World({ x: 0, y: 0, z: 0 });
     const robotBody = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(TRAINING_START.x, ROBOT_GEOMETRY.bodyCenterHeight, TRAINING_START.z).setGravityScale(0).lockRotations());
     robotBody.setEnabledRotations(false, false, false, true);
-    const robotCollider = world.createCollider(RAPIER.ColliderDesc.cuboid(.25, ROBOT_GEOMETRY.colliderHalfHeight, .2).setFriction(.9).setRestitution(.05), robotBody);
+    const robotCollider = world.createCollider(
+      RAPIER.ColliderDesc.cuboid(
+        ROBOT_GEOMETRY.colliderHalfWidth,
+        ROBOT_GEOMETRY.colliderHalfHeight,
+        ROBOT_GEOMETRY.colliderHalfLength,
+      ).setFriction(.9).setRestitution(.05),
+      robotBody,
+    );
     return new Simulation(canvas, transport, callbacks, world, robotBody, robotCollider);
   }
 

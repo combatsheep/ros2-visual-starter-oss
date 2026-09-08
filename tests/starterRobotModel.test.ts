@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
 import { ROBOT_GEOMETRY } from '../src/robotGeometry';
 import { createStarterRobotModel } from '../src/starterRobotModel';
 
@@ -12,5 +13,11 @@ describe('OSS v1 starter robot model', () => {
     for (const wheel of model.wheels) {
       expect(wheel.position.y - ROBOT_GEOMETRY.wheelRadius).toBeCloseTo(-ROBOT_GEOMETRY.bodyCenterHeight, 8);
     }
+
+    const body = model.group.getObjectByName('body');
+    expect(body).toBeDefined();
+    const bodyGeometry = (body as THREE.Mesh).geometry as THREE.BoxGeometry;
+    expect(bodyGeometry.parameters.width).toBe(ROBOT_GEOMETRY.bodyWidth);
+    expect(bodyGeometry.parameters.depth).toBe(ROBOT_GEOMETRY.bodyLength);
   });
 });

@@ -69,7 +69,7 @@ Navigation goalはadapterの`sendNavigationGoal`、地図保存とresetはadapte
 
 Command Gateは`/control/navigation_mode`で手動入力とNav2入力の一方だけを選びます。選択中のcommandが500 ms更新されなければ速度0を出します。Navigation goal付近では前進速度を制限します。
 
-Safety Controllerは前方15度を監視し、0.34 m未満の障害物で前進を止め、0.42 m以上で再開します。scanまたはcommandが500 ms更新されない場合も速度0です。後退と旋回は自動生成せず、入力された値の範囲で扱います。
+Safety Controllerは前方15度を監視し、0.30 m未満の障害物で前進を止め、0.38 m以上で再開します。これは縮小した車体の外接半径に4 cmの余裕を加えた値です。scanまたはcommandが500 ms更新されない場合も速度0です。後退と旋回は自動生成せず、入力された値の範囲で扱います。
 
 ### Map
 

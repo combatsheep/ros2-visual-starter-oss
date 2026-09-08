@@ -42,7 +42,12 @@ terminate_recorded_process_group .logs/frontend.pid .logs/frontend.pgid frontend
 terminate_recorded_bootstrap .logs/frontend.bootstrap.pid .logs/frontend.bootstrap.owner .logs/frontend.bootstrap.token .logs/frontend.pid .logs/frontend.pgid .logs/frontend.session_ready .logs/frontend.token frontend_bootstrap || failed=1
 terminate_recorded_process_group .logs/optional_llm.pid .logs/optional_llm.pgid optional_llm .logs/optional_llm.session_ready .logs/optional_llm.token || failed=1
 terminate_recorded_bootstrap .logs/optional_llm.bootstrap.pid .logs/optional_llm.bootstrap.owner .logs/optional_llm.bootstrap.token .logs/optional_llm.pid .logs/optional_llm.pgid .logs/optional_llm.session_ready .logs/optional_llm.token optional_llm_bootstrap || failed=1
-./scripts/runtime.sh stop 9>&- >/dev/null 2>&1 || failed=1
+if terminate_locked_runtime_operation "$ROOT_DIR/.logs/runtime.lock" "$$"; then
+  ./scripts/runtime.sh stop 9>&- >/dev/null 2>&1 || failed=1
+else
+  # Do not wait on an unowned lock after refusing an unsafe kill.
+  failed=1
+fi
 
 if [[ "$failed" != "0" ]]; then
   echo "一部processを安全に停止できませんでした。PID台帳を保持しています。" >&2
