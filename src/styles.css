@@ -810,7 +810,6 @@ kbd { display: inline-grid; min-width: 1.4rem; height: 1.4rem; place-items: cent
   background: #122c40;
   color: #f3fbff;
   box-shadow: 0 8px 28px #0005;
-  animation: onboarding-glow 3s ease-in-out infinite;
 }
 .onboarding-tip[hidden] { display: none; }
 .onboarding-tip::before {
@@ -830,9 +829,3 @@ kbd { display: inline-grid; min-width: 1.4rem; height: 1.4rem; place-items: cent
 .onboarding-actions input { width: 17px; height: 17px; accent-color: #65d9f5; }
 .onboarding-actions button { min-width: 52px; min-height: 40px; border: 0; border-radius: 8px; background: #8ce5fa; color: #102839; font-weight: 700; cursor: pointer; }
 .onboarding-tip :focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
-.onboarding-target { outline: 2px solid #65d9f5; outline-offset: 4px; }
-@keyframes onboarding-glow {
-  0%, 100% { box-shadow: 0 8px 28px #0005, 0 0 8px #65d9f533; }
-  50% { box-shadow: 0 8px 28px #0005, 0 0 25px #65d9f5aa; border-color: #d5f7ff; }
-}
-@media (prefers-reduced-motion: reduce) { .onboarding-tip { animation: none; } }

@@ -89,7 +89,6 @@ export class OnboardingTips {
   }
   private nextTipAt = 0;
   private hide(): void {
-    this.target?.classList.remove('onboarding-target');
     if (this.target) {
       const descriptions = (this.target.getAttribute('aria-describedby') ?? '').split(' ').filter((id) => id && id !== 'onboarding-message');
       if (descriptions.length) this.target.setAttribute('aria-describedby', descriptions.join(' '));
@@ -119,7 +118,6 @@ export class OnboardingTips {
       this.target = target;
       this.message.textContent = tips[id].text;
       this.checkbox.checked = false;
-      target.classList.add('onboarding-target');
       target.setAttribute('aria-describedby', [target.getAttribute('aria-describedby'), 'onboarding-message'].filter(Boolean).join(' '));
     }
     this.card.hidden = false;
