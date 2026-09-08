@@ -208,6 +208,7 @@ interface StageGesture {
   startPointerAngle: number;
   startRotation: number;
   startClientY: number;
+  startHeight: number;
   lastX: number;
   lastZ: number;
   lastRotation: number;
@@ -3155,6 +3156,7 @@ export class LearningUI {
       startPointerAngle,
       startRotation: object.rotation,
       startClientY: clientY ?? 0,
+      startHeight: object.size.height,
       lastX: object.position.x,
       lastZ: object.position.z,
       lastRotation: object.rotation,
@@ -3205,7 +3207,7 @@ export class LearningUI {
       gesture.lastZ = point.z;
     } else if (gesture.kind === 'resizeHeight') {
       const totalDy = event.clientY - gesture.startClientY;
-      const nextHeight = gesture.lastHeight + this.simulation.screenDeltaToHeightDelta(totalDy);
+      const nextHeight = gesture.startHeight + this.simulation.screenDeltaToHeightDelta(totalDy);
       gesture.lastHeight = clampRange(this.snapped(nextHeight, .05), .1, 3);
     } else {
       const angle = Math.atan2(ground.z - gesture.centerZ, ground.x - gesture.centerX);
