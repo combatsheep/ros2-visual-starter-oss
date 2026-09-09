@@ -257,6 +257,14 @@ export default defineConfig(() => {
 
   return {
     base: '/',
+    build: {
+      rollupOptions: {
+        input: {
+          main: resolve(root, 'index.html'),
+          manual: resolve(root, 'docs/STARTUP_GUIDE.html'),
+        },
+      },
+    },
     plugins: [optionalLlmBoundaryPlugin(), runtimeControlPlugin(), controlLeasePlugin(), shutdownControlPlugin()],
     server: {
       host: '127.0.0.1',
