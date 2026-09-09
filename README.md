@@ -55,6 +55,36 @@ SIMモードはROS 2もLocal LLMも必要としません。終了時は次を実
 ./stop.sh
 ```
 
+## アンインストール
+
+ROS2 Visual Starterのプロジェクト環境は、cloneしたrepositoryの中に作成されます。`setup.sh`が準備するNode.js、Python、ROS 2 Jazzy、Nav2、SLAM Toolboxなどの実行環境はrepo内の`.pixi/`に入り、npm依存、ログ、取得したVision asset、生成した地図もrepo内に保存されます。
+
+アンインストールする場合は、まず起動中のruntimeを安全に停止します。
+
+```bash
+./stop.sh
+```
+
+停止後、cloneした`ros2-visual-starter-oss`ディレクトリを削除すれば、このプロジェクト用のROS 2、Nav2、SLAM Toolbox等の環境も一緒に削除されます。Terminalから削除する場合は、親ディレクトリへ移動し、削除対象が正しいことを確認してから実行してください。
+
+```bash
+cd ..
+pwd
+ls -ld ./ros2-visual-starter-oss
+rm -rf -- ./ros2-visual-starter-oss
+```
+
+> [!NOTE]
+> MacにPixiがまだ入っていなかった場合、`setup.sh`は検証済みのPixi本体を`~/.pixi/bin/pixi`へ導入します。これはrepositoryの外にあるため、cloneしたディレクトリを削除しても残ります。Pixiは他のプロジェクトでも利用できるため、通常はそのまま残して問題ありません。
+>
+> このrepositoryのためだけにPixiを初めて導入し、他のPixiプロジェクトで使っていないことを確認できる場合に限り、Pixi実行ファイルを個別に削除できます。
+>
+> ```bash
+> rm -f ~/.pixi/bin/pixi
+> ```
+>
+> 他のPixiプロジェクトやユーザー領域を巻き込む可能性があるため、`~/.pixi`ディレクトリ全体を削除する手順は推奨しません。Pixiや関連ツールの共有cacheがrepository外に残る場合がありますが、それらはROS2 Visual Starterの起動環境ではありません。
+
 ## 起動モード
 
 一度に選べる構成は1つです。別の構成へ切り替えると、現在のNavigation goalを取り消し、速度を0にしてから必要なprocessを入れ替えます。
