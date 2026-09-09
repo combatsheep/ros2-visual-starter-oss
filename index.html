@@ -32,7 +32,15 @@
           <div class="topbar-actions">
             <button id="connection-status" class="runtime-button runtime-ros deactivated" type="button"><span class="status-dot"></span><span>ROS2 deactivated</span></button>
             <button id="theme-toggle" class="button button-outline theme-toggle" type="button" aria-pressed="true" title="ライトモードへ切り替え">☀️ ライト</button>
-            <button id="app-exit-button" class="app-exit-button" type="button" title="フロントとROS 2を終了">アプリ終了</button>
+            <a class="button-outline manual-link" href="./docs/STARTUP_GUIDE.html" target="_blank" rel="noopener" aria-label="マニュアルを開く" title="マニュアルを開く">
+              <svg class="manual-icon" viewBox="0 0 32 32" focusable="false" aria-hidden="true">
+                <path class="manual-icon-page" d="M5.5 6.5c3.8-.8 7.2-.1 10.5 2.1v17c-3.3-2.2-6.7-2.9-10.5-2.1z" />
+                <path class="manual-icon-page" d="M26.5 6.5c-3.8-.8-7.2-.1-10.5 2.1v17c3.3-2.2 6.7-2.9 10.5-2.1z" />
+                <path class="manual-icon-spine" d="M16 8.6v17" />
+                <path class="manual-icon-line" d="M8.5 11.2c2-.2 4.1.3 6.1 1.4M8.5 15.2c2-.2 4.1.3 6.1 1.4M23.5 11.2c-2-.2-4.1.3-6.1 1.4M23.5 15.2c-2-.2-4.1.3-6.1 1.4" />
+                <path class="manual-icon-bookmark" d="M20.5 5.5h4.4v7l-2.2-1.5-2.2 1.5z" />
+              </svg>
+            </a>
           </div>
           <nav id="view-tabs" class="view-tabs" role="tablist" aria-label="画面を切り替え">
             <button class="view-tab active" data-view="sim" role="tab" aria-selected="true" aria-controls="view-sim" type="button">SIM</button>
@@ -40,6 +48,7 @@
             <button class="view-tab view-tab-dummy" data-view="robot" role="tab" aria-selected="false" type="button" disabled title="Robot Studioは現在未対応です">ROBOT</button>
           </nav>
         </div>
+        <button id="app-exit-button" class="app-exit-button topbar-exit-button" type="button" title="フロントとROS 2を終了">アプリ終了</button>
       </header>
 
       <section id="control-lease-banner" class="control-lease-banner" hidden aria-live="polite">
